@@ -60,14 +60,14 @@ describe('parseParticipleForms', () => {
 describe('auxiliariesInRule', () => {
   it('reads one or two auxiliaries, and pronominal s’être', () => {
     expect(auxiliariesInRule('present indicative of être + past participle')).toEqual([
-      { auxiliary: 'être', reflexive: false },
+      { auxiliary: 'être', reflexive: false, en: false },
     ]);
     expect(auxiliariesInRule('present indicative of avoir or être + past participle')).toEqual([
-      { auxiliary: 'avoir', reflexive: false },
-      { auxiliary: 'être', reflexive: false },
+      { auxiliary: 'avoir', reflexive: false, en: false },
+      { auxiliary: 'être', reflexive: false, en: false },
     ]);
     expect(auxiliariesInRule("present indicative of s'être + past participle")).toEqual([
-      { auxiliary: 'être', reflexive: true },
+      { auxiliary: 'être', reflexive: true, en: false },
     ]);
   });
 });
@@ -160,6 +160,21 @@ describe('compound tenses', () => {
     expect(c.moods.find((m) => m.id === 'imperatif')!.pairs.some((p) => p.compound)).toBe(false);
     // The non-pronominal table on the same page uses avoir.
     expect(tense(layoutConjugation(tables[1]!), 'indicatif', 'Passé composé')[0]).toBe('j’ ai assis');
+  });
+
+  it('puts "en" after the reflexive pronoun (s’en être)', async () => {
+    const { tables } = await load('être');
+    const sEnEtre = tables.find((t) => t.lemma === "s'en être")!;
+    expect(auxiliariesInRule(sEnEtre.periphrastic[2]!.rule)).toEqual([{ auxiliary: 'être', reflexive: true, en: true }]);
+    const c = layoutConjugation(sEnEtre);
+    expect(tense(c, 'indicatif', 'Passé composé')).toEqual([
+      "je m'en suis été",
+      "tu t'en es été",
+      "il/elle/on s'en est été",
+      'nous nous en sommes été',
+      'vous vous en êtes été',
+      'ils/elles s’en sont été'.replace('’', "'"),
+    ]);
   });
 
   it('only gives compound forms for persons the verb has (pleuvoir)', async () => {

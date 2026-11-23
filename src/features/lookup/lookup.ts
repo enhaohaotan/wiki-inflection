@@ -8,10 +8,12 @@ import { readCache, readForms, writeCache, writeForms } from './cache';
 export interface FormMatch {
   /** The page that was looked up, e.g. "vais". */
   form: string;
-  /** Dictionary forms Wiktionary says it belongs to, most likely first. */
-  lemmas: string[];
-  /** The entry in `lemmas` that is being shown. */
-  lemma: string;
+  /**
+   * Every dictionary form it belongs to that has an inflection table, in
+   * Wiktionary's order (e.g. "suis" -> être, suivre). All are loaded so the
+   * page can switch between them without another lookup.
+   */
+  entries: LanguageEntry[];
 }
 
 export type LookupResult =
@@ -106,7 +108,10 @@ async function resolveLemma(
   return null;
 }
 
-/** Shows the first lemma of `form` that has an inflection table, `preferred` first. */
+/**
+ * Loads every lemma of `form` that has an inflection table. The entry shown
+ * first is `preferred` when given and found, else the first one.
+ */
 async function viaLemmas(
   language: LanguageModule,
   form: string,
@@ -114,12 +119,17 @@ async function viaLemmas(
   preferred: string | undefined,
   signal?: AbortSignal,
 ): Promise<LookupResult | null> {
-  const order = preferred && lemmas.includes(preferred) ? [preferred, ...lemmas.filter((l) => l !== preferred)] : lemmas;
-  for (const lemma of order) {
-    const entry = await resolveLemma(language, lemma, 1, signal);
-    if (entry) return { status: 'ok', entry, match: { form, lemmas, lemma } };
-  }
-  return null;
+  const resolved = await Promise.all(lemmas.map((lemma) => resolveLemma(language, lemma, 1, signal)));
+  const entries: LanguageEntry[] = [];
+  let shown: LanguageEntry | undefined;
+  resolved.forEach((entry, i) => {
+    // Two lemmas can lead to the same entry (allée -> allé -> aller); keep one.
+    if (!entry || entries.some((e) => e.title === entry.title)) return;
+    entries.push(entry);
+    if (preferred && (lemmas[i] === preferred || entry.title === preferred)) shown = entry;
+  });
+  if (entries.length === 0) return null;
+  return { status: 'ok', entry: shown ?? entries[0]!, match: { form, entries } };
 }
 
 /**
@@ -151,7 +161,10 @@ export async function lookup(
       const forms = readForms(language.code, title);
       if (forms) {
         const result = await viaLemmas(language, title, forms, preferredLemma, signal);
-        if (result) return result;
+        if (result?.status === 'ok' && result.match) {
+          writeForms(language.code, title, result.match.entries.map((e) => e.title));
+          return result;
+        }
       }
     }
 
@@ -169,9 +182,12 @@ export async function lookup(
       // Not a dictionary form with a table: maybe an inflected form of one.
       const lemmas = language.lemmasOf?.(page.section, title) ?? [];
       if (lemmas.length > 0) {
-        writeForms(language.code, title, lemmas);
         const result = await viaLemmas(language, title, lemmas, preferredLemma, signal);
-        if (result) return result;
+        if (result?.status === 'ok' && result.match) {
+          // Remember only the lemmas that had a table, so dead ends aren't fetched again.
+          writeForms(language.code, title, result.match.entries.map((e) => e.title));
+          return result;
+        }
       }
       miss({ status: 'no-inflection', query: title });
     }

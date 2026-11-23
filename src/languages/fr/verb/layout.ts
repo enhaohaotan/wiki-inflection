@@ -1,4 +1,4 @@
-import { hasTags, type Inflection, type InflectionTable } from '../../../core/types';
+import { hasTags, type Inflection, type InflectionTable, type LanguageEntry } from '../../../core/types';
 import { AUXILIARY_FORMS, auxiliariesInRule, type AuxiliaryUse, type AuxTense } from './auxiliaries';
 
 /**
@@ -232,9 +232,33 @@ function normalizeForm(text: string): string {
   return text.normalize('NFC').replace(/[\u2019\u02BC]/g, "'").trim().toLocaleLowerCase('fr');
 }
 
-/** "m'assois", "nous assoyons", "assois-toi" -> "assois", "assoyons", "assois". */
+/**
+ * "m'assois", "nous assoyons", "assois-toi" -> "assois", "assoyons", "assois";
+ * with "en" too: "m'en suis", "nous en sommes", "va-t'en" -> "suis", "sommes", "va".
+ */
 function withoutReflexive(form: string): string {
-  return form.replace(/^(?:[mts]'|(?:me|te|se|nous|vous) )/, '').replace(/-(?:toi|nous|vous)$/, '');
+  return form
+    .replace(/^(?:[mts]'en |(?:nous|vous) en |[mts]'|(?:me|te|se|nous|vous) )/, '')
+    .replace(/-(?:t'en|(?:nous|vous)-en|toi|nous|vous)$/, '');
+}
+
+/** For each table, whether it contains the looked-up form (participle agreement included). */
+export function tablesWithMatch(tables: InflectionTable[], query: string | undefined): boolean[] {
+  return tables.map(
+    (table) => !!query && table.inflections.some((i) => i.forms.some((form) => matchesForm(form, query))),
+  );
+}
+
+/**
+ * The one table that stands for an entry after a reverse lookup: the plain
+ * verb (être rather than s'être / s'en être) when it has the form, else the
+ * first table that has it, else the plain verb anyway.
+ */
+export function mainTable(entry: LanguageEntry, query: string): InflectionTable | undefined {
+  const plain = entry.tables.find((t) => t.lemma === entry.title) ?? entry.tables[0];
+  const hits = tablesWithMatch(entry.tables, query);
+  const matching = entry.tables.filter((_, i) => hits[i]);
+  return plain && matching.includes(plain) ? plain : (matching[0] ?? plain);
 }
 
 /**
@@ -283,8 +307,10 @@ function compoundForm(
   const pp = use.auxiliary === 'être' ? agreementNotation(person, num, participle) : participle.ms;
   if (!use.reflexive) return `${aux} ${pp}`;
   const reflexive = REFLEXIVE_PRONOUNS[person + num]!;
-  const elided = /^[mts]e$/.test(reflexive) && VOWEL_START.test(aux) ? `${reflexive[0]}'${aux}` : `${reflexive} ${aux}`;
-  return `${elided} ${pp}`;
+  // me/te/se elide before a vowel: before "en" always (m'en suis), else as the auxiliary starts.
+  const next = use.en ? `en ${aux}` : aux;
+  const clitics = /^[mts]e$/.test(reflexive) && VOWEL_START.test(next) ? `${reflexive[0]}'${next}` : `${reflexive} ${next}`;
+  return `${clitics} ${pp}`;
 }
 
 function compoundRows(

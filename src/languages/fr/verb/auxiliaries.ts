@@ -52,6 +52,8 @@ export interface AuxiliaryUse {
   auxiliary: Auxiliary;
   /** Pronominal verbs ("s'être"): me suis, te es -> t'es, ... */
   reflexive: boolean;
+  /** Pronominal verbs with "en" ("s'en être"): m'en suis, t'en es, ... */
+  en: boolean;
 }
 
 /**
@@ -60,13 +62,13 @@ export interface AuxiliaryUse {
  */
 export function auxiliariesInRule(rule: string): AuxiliaryUse[] {
   const found: AuxiliaryUse[] = [];
-  for (const m of rule.matchAll(/(?:^|[\s(])(s['’]être|être|avoir)(?=[\s+),]|$)/g)) {
+  for (const m of rule.matchAll(/(?:^|[\s(])(s['’]en être|s['’]être|être|avoir)(?=[\s+),]|$)/g)) {
     const word = m[1]!;
     const use: AuxiliaryUse =
       word === 'avoir'
-        ? { auxiliary: 'avoir', reflexive: false }
-        : { auxiliary: 'être', reflexive: word !== 'être' };
-    if (!found.some((f) => f.auxiliary === use.auxiliary && f.reflexive === use.reflexive)) {
+        ? { auxiliary: 'avoir', reflexive: false, en: false }
+        : { auxiliary: 'être', reflexive: word !== 'être', en: /en être$/.test(word) };
+    if (!found.some((f) => f.auxiliary === use.auxiliary && f.reflexive === use.reflexive && f.en === use.en)) {
       found.push(use);
     }
   }

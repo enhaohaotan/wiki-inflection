@@ -341,27 +341,31 @@ main {
   box-decoration-break: clone;
 }
 
-/* "Form of: être · suivre" when an inflected form belongs to several verbs */
-.lemmas {
+/* one row for the conjugations on the page and, after a reverse lookup,
+   the other verbs the form belongs to: FORM OF être s'être s'en être suivre */
+.switcher {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 4px 16px;
+  gap: 4px 18px;
   margin-bottom: 16px;
 }
 
-.lemmas .label {
+.switcher .label {
   color: var(--muted);
 }
 
-.lemmas a {
+.switcher button {
+  padding: 2px 0;
+  border: 0;
+  background: none;
   font-size: 18px;
   font-weight: 500;
   color: var(--muted);
-  text-decoration: none;
+  cursor: pointer;
 }
 
-.lemmas a[aria-current] {
+.switcher button[aria-pressed='true'] {
   color: var(--text);
   text-decoration: underline;
   text-decoration-thickness: 2px;

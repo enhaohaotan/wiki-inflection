@@ -52,22 +52,13 @@ export function App() {
             Looking up <b>{state.query}</b>…
           </p>
         )}
-        {state.status === 'ok' && state.match && state.match.lemmas.length > 1 && (
-          <nav className="lemmas" aria-label="Dictionary forms">
-            <span className="label">Form of</span>
-            {state.match.lemmas.map((lemma) => (
-              <a
-                key={lemma}
-                lang={language.code}
-                href={`#/${language.code}/${encodeURIComponent(state.match!.form)}/${encodeURIComponent(lemma)}`}
-                aria-current={lemma === state.match!.lemma ? 'true' : undefined}
-              >
-                {lemma}
-              </a>
-            ))}
-          </nav>
+        {state.status === 'ok' && View && (
+          <View
+            entries={state.match?.entries ?? [state.entry]}
+            initial={state.entry}
+            highlight={state.match?.form}
+          />
         )}
-        {state.status === 'ok' && View && <View entry={state.entry} highlight={state.match?.form} />}
         <Problem state={state} languageName={language.name} onRetry={() => setAttempt((n) => n + 1)} />
       </main>
 
@@ -75,10 +66,15 @@ export function App() {
         {state.status === 'ok' ? (
           <>
             From{' '}
-            <a href={pageUrl(state.entry.title)} target="_blank" rel="noreferrer">
-              “{state.entry.title}” on Wiktionary
-            </a>
-            ,{' '}
+            {(state.match?.entries ?? [state.entry]).map((entry, i) => (
+              <span key={entry.title}>
+                {i > 0 && ', '}
+                <a href={pageUrl(entry.title)} target="_blank" rel="noreferrer">
+                  “{entry.title}”
+                </a>
+              </span>
+            ))}{' '}
+            on Wiktionary,{' '}
           </>
         ) : (
           <>Data from Wiktionary, </>

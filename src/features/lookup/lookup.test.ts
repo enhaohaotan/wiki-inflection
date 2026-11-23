@@ -2,7 +2,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { french } from '../../languages/fr';
-import { matchesForm } from '../../languages/fr/verb/layout';
+import { mainTable, matchesForm, tablesWithMatch } from '../../languages/fr/verb/layout';
 import { findLanguageSection, formOfTargets, parsePage } from '../../wiktionary/page';
 import { lookup } from './lookup';
 
@@ -44,7 +44,32 @@ describe('matchesForm', () => {
     expect(matchesForm("m'assois", 'assois')).toBe(true);
     expect(matchesForm('nous assoyons', 'assoyons')).toBe(true);
     expect(matchesForm('assieds-toi', 'assieds')).toBe(true);
+    expect(matchesForm("m'en suis", 'suis')).toBe(true);
+    expect(matchesForm('nous en sommes', 'sommes')).toBe(true);
+    expect(matchesForm("va-t'en", 'va')).toBe(true);
     expect(matchesForm('vas', 'vais')).toBe(false);
+  });
+});
+
+describe('tablesWithMatch', () => {
+  it('marks every conjugation on the page that contains the form', () => {
+    const tables = french.parse(frenchSection('être'), 'être').tables;
+    expect(tables.map((t) => t.lemma)).toEqual(['être', "s'être", "s'en être"]);
+    expect(tablesWithMatch(tables, 'suis')).toEqual([true, true, true]);
+    expect(tablesWithMatch(tables, 'vais')).toEqual([false, false, false]);
+    expect(tablesWithMatch(tables, undefined)).toEqual([false, false, false]);
+  });
+});
+
+describe('mainTable', () => {
+  it('stands for an entry by its plain verb when that has the form', () => {
+    const etre = french.parse(frenchSection('être'), 'être');
+    expect(mainTable(etre, 'suis')?.lemma).toBe('être');
+  });
+
+  it('falls back to a pronominal table when only that has the form', () => {
+    const etre = french.parse(frenchSection('être'), 'être');
+    expect(mainTable(etre, "m'en suis")?.lemma).toBe("s'en être");
   });
 });
 
@@ -69,17 +94,20 @@ describe('lookup (reverse)', () => {
     expect(result.status).toBe('ok');
     if (result.status !== 'ok') return;
     expect(result.entry.title).toBe('aller');
-    expect(result.match).toEqual({ form: 'vais', lemmas: ['aller', 'vader'], lemma: 'aller' });
+    expect(result.match?.form).toBe('vais');
+    // vader is also listed by Wiktionary but has no conjugation here, so it is left out
+    expect(result.match?.entries.map((e) => e.title)).toEqual(['aller']);
     // aller takes être, so its participle page is fetched for agreement
-    expect(requested).toEqual(['vais', 'aller', 'allé']);
+    expect([...requested].sort()).toEqual(['aller', 'allé', 'vader', 'vais']);
   });
 
-  it('lets the caller pick among several verbs', async () => {
+  it('loads every verb a form belongs to, and opens the preferred one', async () => {
     const first = await lookup(french, 'suis');
     expect(first.status === 'ok' && first.entry.title).toBe('être');
+    expect(first.status === 'ok' && first.match?.entries.map((e) => e.title)).toEqual(['être', 'suivre']);
     const chosen = await lookup(french, 'suis', undefined, 'suivre');
     expect(chosen.status === 'ok' && chosen.entry.title).toBe('suivre');
-    expect(chosen.status === 'ok' && chosen.match?.lemma).toBe('suivre');
+    expect(chosen.status === 'ok' && chosen.match?.entries.map((e) => e.title)).toEqual(['être', 'suivre']);
   });
 
   it('follows two links: allée -> allé -> aller', async () => {
@@ -91,7 +119,7 @@ describe('lookup (reverse)', () => {
     await lookup(french, 'vais');
     requested.length = 0;
     const again = await lookup(french, 'vais');
-    expect(again.status === 'ok' && again.match?.lemma).toBe('aller');
+    expect(again.status === 'ok' && again.entry.title).toBe('aller');
     expect(requested).toEqual([]);
   });
 
