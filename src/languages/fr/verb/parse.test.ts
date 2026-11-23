@@ -133,8 +133,8 @@ describe('layoutConjugation', () => {
   it('groups aller into moods and tenses with pronouns', () => {
     const c = layoutConjugation(load('aller')[0]!);
     expect(c.participles).toEqual([
-      { fr: 'Présent', forms: ['allant'] },
-      { fr: 'Passé', forms: ['allé'] },
+      { fr: 'Présent', forms: ['allant'], agreed: [] },
+      { fr: 'Passé', forms: ['allé'], agreed: [] },
     ]);
     expect(c.moods.map((m) => m.fr)).toEqual(['Indicatif', 'Conditionnel', 'Subjonctif', 'Impératif']);
 

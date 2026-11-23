@@ -4,8 +4,16 @@ import { lookup, type LookupResult } from './lookup';
 
 export type LookupState = { status: 'idle' } | { status: 'loading'; query: string } | LookupResult;
 
-/** Runs a lookup whenever the language or word changes; `attempt` forces a retry. */
-export function useLookup(language: LanguageModule, word: string, attempt: number): LookupState {
+/**
+ * Runs a lookup whenever the language, word or chosen dictionary form
+ * changes; `attempt` forces a retry.
+ */
+export function useLookup(
+  language: LanguageModule,
+  word: string,
+  lemma: string | undefined,
+  attempt: number,
+): LookupState {
   const [state, setState] = useState<LookupState>({ status: 'idle' });
 
   useEffect(() => {
@@ -15,7 +23,7 @@ export function useLookup(language: LanguageModule, word: string, attempt: numbe
     }
     const controller = new AbortController();
     setState({ status: 'loading', query: word });
-    lookup(language, word, controller.signal)
+    lookup(language, word, controller.signal, lemma)
       .then((result) => {
         if (!controller.signal.aborted) setState(result);
       })
@@ -25,7 +33,7 @@ export function useLookup(language: LanguageModule, word: string, attempt: numbe
         setState({ status: 'error', kind: 'http' });
       });
     return () => controller.abort();
-  }, [language, word, attempt]);
+  }, [language, word, lemma, attempt]);
 
   return state;
 }

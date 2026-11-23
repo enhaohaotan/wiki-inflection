@@ -1,11 +1,13 @@
 import { useMemo, type CSSProperties } from 'react';
 import type { InflectionTable } from '../../../core/types';
-import { layoutConjugation, type FormRow, type MoodBlock, type TenseBlock, type TensePair } from './layout';
+import { layoutConjugation, matchesForm, type FormRow, type MoodBlock, type TenseBlock, type TensePair } from './layout';
 
 interface Props {
   table: InflectionTable;
   /** Prefix for element ids, so several tables can share a page. */
   idPrefix: string;
+  /** Inflected form to highlight, from a reverse lookup. */
+  highlight?: string;
 }
 
 /**
@@ -13,7 +15,7 @@ interface Props {
  * pronoun is repeated only where it changes: "il a passé / est passé(e)",
  * "j’ai passé / je suis passé(e)".
  */
-function Cell({ row }: { row: FormRow }) {
+function Cell({ row, highlight }: { row: FormRow; highlight?: string }) {
   if (row.parts.length === 0) {
     return (
       <div className="cell missing" lang="fr">
@@ -32,7 +34,7 @@ function Cell({ row }: { row: FormRow }) {
               {part.pronoun.endsWith('’') ? '' : ' '}
             </>
           )}
-          <span className="form">
+          <span className={highlight && matchesForm(part.form, highlight) ? 'form hit' : 'form'}>
             <Words text={part.form} />
           </span>
         </span>
@@ -66,12 +68,13 @@ function Words({ text }: { text: string }) {
 }
 
 /** One tense as its own column: name, then one line per person. */
-function Column({ tense }: { tense: TenseBlock }) {
+function Column({ tense, highlight }: { tense: TenseBlock; highlight?: string }) {
   return (
     <section className="col">
       <h3 lang="fr">{tense.fr}</h3>
       {tense.rows.map((row, i) => (
-        <Cell key={i} row={row} />
+        // Compound forms are built here, not looked up, so they are never the match.
+        <Cell key={i} row={row} highlight={tense.compound ? undefined : highlight} />
       ))}
     </section>
   );
@@ -82,29 +85,29 @@ function Column({ tense }: { tense: TenseBlock }) {
  * The columns share row heights (CSS subgrid), so each person stays on one
  * line across both even when a form wraps.
  */
-function Pair({ pair }: { pair: TensePair }) {
+function Pair({ pair, highlight }: { pair: TensePair; highlight?: string }) {
   const { simple, compound } = pair;
   const style = { '--rows': simple.rows.length + 1 } as CSSProperties;
   return (
     <div className="pair" style={style}>
-      <Column tense={simple} />
+      <Column tense={simple} highlight={highlight} />
       {compound && <Column tense={compound} />}
     </div>
   );
 }
 
-function Mood({ mood, id }: { mood: MoodBlock; id: string }) {
+function Mood({ mood, id, highlight }: { mood: MoodBlock; id: string; highlight?: string }) {
   return (
     <section className="mood" id={id}>
       <h2 lang="fr">{mood.fr}</h2>
       {mood.pairs.map((pair) => (
-        <Pair key={pair.simple.fr} pair={pair} />
+        <Pair key={pair.simple.fr} pair={pair} highlight={highlight} />
       ))}
     </section>
   );
 }
 
-export function ConjugationView({ table, idPrefix }: Props) {
+export function ConjugationView({ table, idPrefix, highlight }: Props) {
   const c = useMemo(() => layoutConjugation(table), [table]);
   const sections = [
     ...c.moods.map((m) => ({ id: m.id, fr: m.fr })),
@@ -133,7 +136,7 @@ export function ConjugationView({ table, idPrefix }: Props) {
       </nav>
 
       {c.moods.map((m) => (
-        <Mood key={m.id} mood={m} id={idPrefix + m.id} />
+        <Mood key={m.id} mood={m} id={idPrefix + m.id} highlight={highlight} />
       ))}
 
       {c.participles.length > 0 && (
@@ -144,7 +147,13 @@ export function ConjugationView({ table, idPrefix }: Props) {
               <section key={p.fr} className="col">
                 <h3 lang="fr">{p.fr}</h3>
                 <div className="cell" lang="fr">
-                  <span className="form">{p.forms.join(' / ')}</span>
+                  <span
+                    className={
+                      highlight && [...p.forms, ...p.agreed].some((f) => matchesForm(f, highlight)) ? 'form hit' : 'form'
+                    }
+                  >
+                    {p.forms.join(' / ')}
+                  </span>
                 </div>
               </section>
             ))}

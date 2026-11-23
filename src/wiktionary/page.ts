@@ -57,3 +57,23 @@ export function headingPath(el: Element, root: Element): string[] {
 export function cleanText(node: Node | null | undefined): string {
   return (node?.textContent ?? '').replace(/\s+/g, ' ').trim();
 }
+
+/**
+ * Words this entry says it is a form of, in page order, e.g. "vais" ->
+ * ["aller"], "suis" -> ["être", "suivre"]. Read from the links of
+ * "inflection of" / "alternative form of" style definitions in `lang`.
+ * `inHeading` limits it to definitions under matching headings (e.g. Verb).
+ */
+export function formOfTargets(
+  section: Element,
+  lang: string,
+  inHeading: (heading: string) => boolean = () => true,
+): string[] {
+  const targets: string[] = [];
+  for (const link of Array.from(section.querySelectorAll(`.form-of-definition-link [lang="${lang}"] a`))) {
+    if (!headingPath(link, section).some(inHeading)) continue;
+    const title = link.getAttribute('title') || cleanText(link);
+    if (title && !targets.includes(title)) targets.push(title);
+  }
+  return targets;
+}

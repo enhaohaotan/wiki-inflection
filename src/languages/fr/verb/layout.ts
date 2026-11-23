@@ -224,6 +224,27 @@ export interface ParticipleForm {
   /** "Présent" or "Passé". */
   fr: string;
   forms: string[];
+  /** Agreed forms not shown but belonging to this slot (allée, allés, allées). */
+  agreed: string[];
+}
+
+function normalizeForm(text: string): string {
+  return text.normalize('NFC').replace(/[\u2019\u02BC]/g, "'").trim().toLocaleLowerCase('fr');
+}
+
+/** "m'assois", "nous assoyons", "assois-toi" -> "assois", "assoyons", "assois". */
+function withoutReflexive(form: string): string {
+  return form.replace(/^(?:[mts]'|(?:me|te|se|nous|vous) )/, '').replace(/-(?:toi|nous|vous)$/, '');
+}
+
+/**
+ * Whether a form shown in the table is the word that was looked up. Pronominal
+ * tables write the pronoun into the form, so "assois" matches "m'assois".
+ */
+export function matchesForm(form: string, query: string): boolean {
+  const f = normalizeForm(form);
+  const q = normalizeForm(query);
+  return f === q || withoutReflexive(f) === q;
 }
 
 export interface Conjugation {
@@ -301,7 +322,12 @@ export function layoutConjugation(table: InflectionTable): Conjugation {
     ['pp', 'Passé'],
   ] as const) {
     const slot = find(table, [tag]);
-    if (slot) participles.push({ fr, forms: slot.forms });
+    if (!slot) continue;
+    const agreed =
+      tag === 'pp'
+        ? table.inflections.filter((i) => i.tags[0] === 'pp' && i.tags.length === 3).flatMap((i) => i.forms)
+        : [];
+    participles.push({ fr, forms: slot.forms, agreed });
   }
 
   const finite = table.inflections.filter((i) => /^[123]$/.test(i.tags[0] ?? ''));

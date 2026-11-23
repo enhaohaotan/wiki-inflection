@@ -3,6 +3,7 @@ import type { LanguageModule } from '../registry';
 import { auxiliariesInRule } from './verb/auxiliaries';
 import { parseFrenchVerbTables } from './verb/parse';
 import { parseParticipleForms } from './verb/participle';
+import { formOfTargets } from '../../wiktionary/page';
 
 function pastParticiple(table: InflectionTable): string | undefined {
   return table.inflections.find((i) => i.tags.length === 1 && i.tags[0] === 'pp')?.forms[0];
@@ -23,6 +24,11 @@ export const french: LanguageModule = {
     const asked = tables.filter((t) => t.lemma === pageTitle);
     const others = tables.filter((t) => t.lemma !== pageTitle);
     return { lang: 'fr', title: pageTitle, tables: [...asked, ...others] };
+  },
+
+  lemmasOf(section) {
+    // Verb forms (vais -> aller) and participle forms (allée -> allé).
+    return formOfTargets(section, 'fr', (heading) => /^(Verb|Participle)\b/.test(heading));
   },
 
   async enrich(entry, fetchSection) {

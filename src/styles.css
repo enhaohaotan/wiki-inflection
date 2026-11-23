@@ -331,6 +331,43 @@ main {
   font-weight: 500;
 }
 
+/* the form found by a reverse lookup */
+.hit {
+  padding: 0 3px;
+  margin: 0 -3px;
+  background: var(--accent);
+  color: var(--bg);
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+/* "Form of: être · suivre" when an inflected form belongs to several verbs */
+.lemmas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 16px;
+  margin-bottom: 16px;
+}
+
+.lemmas .label {
+  color: var(--muted);
+}
+
+.lemmas a {
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.lemmas a[aria-current] {
+  color: var(--text);
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+
 /* break lines only between words, never inside allé(e)(s) */
 .word {
   white-space: nowrap;

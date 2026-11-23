@@ -13,7 +13,7 @@ export function App() {
   const route = useRoute();
   const language = getLanguage(route.lang) ?? defaultLanguage;
   const [attempt, setAttempt] = useState(0);
-  const state = useLookup(language, route.word, attempt);
+  const state = useLookup(language, route.word, route.lemma, attempt);
   const [recent, setRecent] = useState<RecentItem[]>(readRecent);
 
   const search = (word: string) => navigate({ lang: language.code, word });
@@ -52,7 +52,22 @@ export function App() {
             Looking up <b>{state.query}</b>…
           </p>
         )}
-        {state.status === 'ok' && View && <View entry={state.entry} />}
+        {state.status === 'ok' && state.match && state.match.lemmas.length > 1 && (
+          <nav className="lemmas" aria-label="Dictionary forms">
+            <span className="label">Form of</span>
+            {state.match.lemmas.map((lemma) => (
+              <a
+                key={lemma}
+                lang={language.code}
+                href={`#/${language.code}/${encodeURIComponent(state.match!.form)}/${encodeURIComponent(lemma)}`}
+                aria-current={lemma === state.match!.lemma ? 'true' : undefined}
+              >
+                {lemma}
+              </a>
+            ))}
+          </nav>
+        )}
+        {state.status === 'ok' && View && <View entry={state.entry} highlight={state.match?.form} />}
         <Problem state={state} languageName={language.name} onRetry={() => setAttempt((n) => n + 1)} />
       </main>
 
@@ -127,10 +142,7 @@ function Problem({
       return (
         <div className="status problem" role="alert">
           <h2>No conjugation for “{state.query}”</h2>
-          <p>
-            It has a {languageName} entry, but not as a verb in its dictionary form. Enter the
-            infinitive, e.g. <i>aller</i> rather than <i>vais</i>.
-          </p>
+          <p>It has a {languageName} entry, but it is not a verb or a form of one.</p>
           <p>
             <a href={pageUrl(state.query)} target="_blank" rel="noreferrer">
               Open on Wiktionary

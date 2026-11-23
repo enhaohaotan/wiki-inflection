@@ -26,6 +26,12 @@ export interface LanguageModule {
    * still shown, just without the extra data.
    */
   enrich?(entry: LanguageEntry, fetchSection: SectionFetcher): Promise<LanguageEntry>;
+  /**
+   * For a page that is an inflected form rather than a dictionary form,
+   * the dictionary forms it belongs to, most likely first (e.g. "vais" ->
+   * ["aller"]). Used for reverse lookup.
+   */
+  lemmasOf?(section: Element, pageTitle: string): string[];
 }
 
 export const languages: readonly LanguageModule[] = [french];

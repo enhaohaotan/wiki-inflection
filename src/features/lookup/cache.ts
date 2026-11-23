@@ -49,6 +49,32 @@ export function writeCache(lang: string, title: string, entry: LanguageEntry): v
   }
 }
 
+/**
+ * Reverse-lookup results: which dictionary forms an inflected form belongs
+ * to ("vais" -> ["aller"]). Small, so stored separately from entries.
+ */
+const formsKey = (lang: string, title: string) => `${PREFIX}form:${lang}:${title}`;
+
+export function readForms(lang: string, title: string): string[] | null {
+  try {
+    const raw = localStorage.getItem(formsKey(lang, title));
+    if (!raw) return null;
+    const stored = JSON.parse(raw) as { savedAt: number; lemmas: string[] };
+    if (Date.now() - stored.savedAt > MAX_AGE_MS) return null;
+    return stored.lemmas;
+  } catch {
+    return null;
+  }
+}
+
+export function writeForms(lang: string, title: string, lemmas: string[]): void {
+  try {
+    localStorage.setItem(formsKey(lang, title), JSON.stringify({ savedAt: Date.now(), lemmas }));
+  } catch {
+    /* caching is best-effort */
+  }
+}
+
 export interface RecentItem {
   lang: string;
   word: string;
