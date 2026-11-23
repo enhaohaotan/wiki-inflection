@@ -53,6 +53,21 @@ export function headingPath(el: Element, root: Element): string[] {
   return path;
 }
 
+const FORM_OF_SUFFIX = '-form-of';
+
+/**
+ * Grammar tags Wiktionary puts on an inflected form in a table, from a class
+ * like "1|s|pres|indc-form-of" -> ["1", "s", "pres", "indc"]. Null if untagged.
+ */
+export function formOfTags(el: Element): string[] | null {
+  for (const cls of Array.from(el.classList)) {
+    if (cls !== 'form-of' && cls.endsWith(FORM_OF_SUFFIX)) {
+      return cls.slice(0, -FORM_OF_SUFFIX.length).split('|');
+    }
+  }
+  return null;
+}
+
 /** Text content with whitespace collapsed. */
 export function cleanText(node: Node | null | undefined): string {
   return (node?.textContent ?? '').replace(/\s+/g, ' ').trim();

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { defaultLanguage, getLanguage } from '../../languages/registry';
+import { readLastLanguage } from './cache';
 
 /**
  * The current lookup lives in the URL hash (#/fr/aller) so results can be
@@ -24,7 +25,7 @@ function decode(part: string | undefined): string {
 function parseHash(hash: string): Route {
   const [, lang = '', word, lemma] = hash.replace(/^#/, '').split('/');
   return {
-    lang: getLanguage(lang)?.code ?? defaultLanguage.code,
+    lang: getLanguage(lang)?.code ?? getLanguage(readLastLanguage() ?? '')?.code ?? defaultLanguage.code,
     word: decode(word),
     lemma: decode(lemma) || undefined,
   };
@@ -32,7 +33,7 @@ function parseHash(hash: string): Route {
 
 export function navigate(route: Route): void {
   const lemma = route.lemma ? `/${encodeURIComponent(route.lemma)}` : '';
-  window.location.hash = route.word ? `/${route.lang}/${encodeURIComponent(route.word)}${lemma}` : '';
+  window.location.hash = route.word ? `/${route.lang}/${encodeURIComponent(route.word)}${lemma}` : `/${route.lang}`;
 }
 
 export function useRoute(): Route {

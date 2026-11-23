@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { LanguagePicker, type LanguageOption } from './LanguagePicker';
 
 interface Props {
   value: string;
   inputLang: string;
+  languages: readonly LanguageOption[];
   onSearch(word: string): void;
+  onLanguageChange(code: string): void;
 }
 
-export function SearchBar({ value, inputLang, onSearch }: Props) {
+export function SearchBar({ value, inputLang, languages, onSearch, onLanguageChange }: Props) {
   const [text, setText] = useState(value);
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => setText(value), [value]);
@@ -22,6 +25,9 @@ export function SearchBar({ value, inputLang, onSearch }: Props) {
 
   return (
     <form className="search" role="search" onSubmit={submit}>
+      {languages.length > 1 && (
+        <LanguagePicker value={inputLang} languages={languages} onChange={onLanguageChange} />
+      )}
       <div className="field">
         <input
           ref={input}

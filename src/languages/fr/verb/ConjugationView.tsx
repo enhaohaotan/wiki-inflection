@@ -1,4 +1,5 @@
 import { useMemo, type CSSProperties } from 'react';
+import { JumpNav } from '../../../ui/JumpNav';
 import type { InflectionTable } from '../../../core/types';
 import { layoutConjugation, matchesForm, type FormRow, type MoodBlock, type TenseBlock, type TensePair } from './layout';
 
@@ -120,20 +121,10 @@ export function ConjugationView({ table, idPrefix, highlight }: Props) {
         <h1 lang="fr">{c.lemma}</h1>
       </header>
 
-      <nav className="jump" aria-label="Sections">
-        {sections.map((s) => (
-          <a
-            key={s.id}
-            href={`#${idPrefix}${s.id}`}
-            onClick={(e) => jumpTo(e, idPrefix + s.id)}
-            lang="fr"
-            title={s.fr}
-            aria-label={s.fr}
-          >
-            {SHORT_NAMES[s.id] ?? s.fr}
-          </a>
-        ))}
-      </nav>
+      <JumpNav
+        lang="fr"
+        targets={sections.map((s) => ({ id: idPrefix + s.id, name: s.fr, short: SHORT_NAMES[s.id] ?? s.fr }))}
+      />
 
       {c.moods.map((m) => (
         <Mood key={m.id} mood={m} id={idPrefix + m.id} highlight={highlight} />
@@ -162,10 +153,4 @@ export function ConjugationView({ table, idPrefix, highlight }: Props) {
       )}
     </article>
   );
-}
-
-/** Scrolls to a mood without touching the URL hash, which holds the current word. */
-function jumpTo(e: React.MouseEvent, id: string) {
-  e.preventDefault();
-  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }

@@ -53,9 +53,9 @@ function sectionFetcher(language: LanguageModule, signal?: AbortSignal): Section
 }
 
 /** Titles to try, most literal first. Phone keyboards capitalise the first letter. */
-function candidates(query: string): string[] {
+function candidates(query: string, locale: string): string[] {
   const title = toPageTitle(query);
-  const lower = title.toLocaleLowerCase('fr');
+  const lower = title.toLocaleLowerCase(locale);
   return lower === title ? [title] : [title, lower];
 }
 
@@ -153,7 +153,7 @@ export async function lookup(
   };
 
   try {
-    const titles = candidates(query);
+    const titles = candidates(query, language.locale);
 
     for (const title of titles) {
       const cached = readCache(language.code, title);

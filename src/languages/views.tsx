@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
-import type { LanguageEntry } from '../core/types';
+import type { InflectionTable, LanguageEntry } from '../core/types';
+import { DanishVerbView } from './da/verb/VerbView';
+import { danishMainTable, danishTablesWithMatch } from './da/verb/layout';
 import { ConjugationView } from './fr/verb/ConjugationView';
 import { mainTable, tablesWithMatch } from './fr/verb/layout';
 
@@ -15,28 +17,37 @@ export interface EntryViewProps {
   highlight?: string;
 }
 
+/** What each language plugs into the shared entry view. */
+interface TableKit {
+  lang: string;
+  Table: ComponentType<{ table: InflectionTable; highlight?: string }>;
+  /** For each table, whether it contains the looked-up form. */
+  withMatch(tables: InflectionTable[], query: string | undefined): boolean[];
+  /** The one table that stands for an entry after a reverse lookup. */
+  main(entry: LanguageEntry, query: string): InflectionTable | undefined;
+}
+
 /**
- * French, one conjugation shown at a time, chosen from one row:
- * - looking up a verb: its conjugations on the page (être · s'être · s'en être);
- * - looking up a form (suis): the verbs it belongs to, one table each
- *   (FORM OF être · suivre). Pronominal variants are left out here; looking
- *   up the verb itself shows them.
+ * One table shown at a time, chosen from one row:
+ * - looking up a word: its tables on the page (être · s'être · s'en être);
+ * - looking up a form (suis): the words it belongs to, one table each
+ *   (FORM OF être · suivre).
  * The row stays the same whichever item is selected.
  */
-function FrenchEntryView({ entries, initial, highlight }: EntryViewProps) {
+function EntryView({ entries, initial, highlight, kit }: EntryViewProps & { kit: TableKit }) {
   const root = useRef<HTMLDivElement>(null);
   const tables = useMemo(
     () =>
       highlight
-        ? entries.map((entry) => mainTable(entry, highlight)).filter((t) => t !== undefined)
+        ? entries.map((entry) => kit.main(entry, highlight)).filter((t) => t !== undefined)
         : entries.flatMap((entry) => entry.tables),
-    [entries, highlight],
+    [entries, highlight, kit],
   );
-  const matches = useMemo(() => tablesWithMatch(tables, highlight), [tables, highlight]);
+  const matches = useMemo(() => kit.withMatch(tables, highlight), [tables, highlight, kit]);
 
   // Open the initial entry: its first table containing the form, else its first table.
   const start = useMemo(() => {
-    const own = initial.tables.map((t) => tables.indexOf(t));
+    const own = tables.map((t, i) => (initial.tables.includes(t) ? i : -1)).filter((i) => i >= 0);
     return own.find((i) => matches[i]) ?? own[0] ?? 0;
   }, [initial, tables, matches]);
 
@@ -54,17 +65,18 @@ function FrenchEntryView({ entries, initial, highlight }: EntryViewProps) {
 
   const table = tables[selected] ?? tables[0];
   if (!table) return null;
+  const { Table } = kit;
 
   return (
     <div ref={root}>
       {tables.length > 1 && (
-        <nav className="switcher" aria-label={highlight ? 'Form of' : 'Conjugations on this page'}>
+        <nav className="switcher" aria-label={highlight ? 'Form of' : 'Tables on this page'}>
           {highlight && <span className="label">Form of</span>}
           {tables.map((t, i) => (
             <button
               key={`${i}:${t.title}`}
               type="button"
-              lang="fr"
+              lang={kit.lang}
               aria-pressed={i === selected}
               onClick={() => {
                 window.scrollTo(0, 0);
@@ -76,12 +88,33 @@ function FrenchEntryView({ entries, initial, highlight }: EntryViewProps) {
           ))}
         </nav>
       )}
-      <ConjugationView key={selected} table={table} idPrefix="t0-" highlight={highlight} />
+      <Table key={selected} table={table} highlight={highlight} />
     </div>
   );
 }
 
+const french: TableKit = {
+  lang: 'fr',
+  Table: ({ table, highlight }) => <ConjugationView table={table} idPrefix="t0-" highlight={highlight} />,
+  withMatch: tablesWithMatch,
+  // Pronominal variants (s'être) are left to a lookup of the verb itself.
+  main: mainTable,
+};
+
+const danish: TableKit = {
+  lang: 'da',
+  Table: DanishVerbView,
+  withMatch: danishTablesWithMatch,
+  main: danishMainTable,
+};
+
+const withKit = (kit: TableKit) =>
+  function LanguageEntryView(props: EntryViewProps) {
+    return <EntryView {...props} kit={kit} />;
+  };
+
 /** The component that renders an entry, per language code. */
 export const entryViews: Record<string, ComponentType<EntryViewProps>> = {
-  fr: FrenchEntryView,
+  fr: withKit(french),
+  da: withKit(danish),
 };

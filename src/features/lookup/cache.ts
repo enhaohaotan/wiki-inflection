@@ -75,6 +75,25 @@ export function writeForms(lang: string, title: string, lemmas: string[]): void 
   }
 }
 
+const LANGUAGE_KEY = 'wikt:lang';
+
+/** The language last searched in, so the home page opens in it. */
+export function readLastLanguage(): string | null {
+  try {
+    return localStorage.getItem(LANGUAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function writeLastLanguage(code: string): void {
+  try {
+    localStorage.setItem(LANGUAGE_KEY, code);
+  } catch {
+    /* best-effort */
+  }
+}
+
 export interface RecentItem {
   lang: string;
   word: string;

@@ -5,6 +5,7 @@ import type { LanguageEntry } from '../core/types';
  * null when the page or the section does not exist. Throws on network errors.
  */
 export type SectionFetcher = (title: string) => Promise<Element | null>;
+import { danish } from './da';
 import { french } from './fr';
 
 /**
@@ -16,6 +17,10 @@ export interface LanguageModule {
   code: string;
   /** Display name, e.g. "French". */
   name: string;
+  /** BCP 47 locale for case-folding and text, e.g. "fr". */
+  locale: string;
+  /** A few dictionary forms to try, shown on the home page before any lookup. */
+  examples: string[];
   /** The language's level-2 heading on en.wiktionary.org, e.g. "French". */
   heading: string;
   /** Extracts everything we support from that language's section of a page. */
@@ -34,7 +39,7 @@ export interface LanguageModule {
   lemmasOf?(section: Element, pageTitle: string): string[];
 }
 
-export const languages: readonly LanguageModule[] = [french];
+export const languages: readonly LanguageModule[] = [french, danish];
 
 export const defaultLanguage: LanguageModule = french;
 

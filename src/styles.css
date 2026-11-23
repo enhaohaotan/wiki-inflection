@@ -92,6 +92,80 @@ a {
   align-items: center;
 }
 
+/* "FR ▾" and the list it opens */
+.lang-picker {
+  position: relative;
+  flex: none;
+}
+
+.lang-button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+.lang-button svg {
+  transition: transform 0.15s;
+}
+
+.lang-button svg.flip {
+  transform: rotate(180deg);
+}
+
+.lang-list {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: -12px;
+  z-index: 20;
+  min-width: 180px;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  background: var(--bg);
+  border: 1px solid var(--text);
+  border-top-width: 3px;
+}
+
+.lang-list:focus {
+  outline: none;
+}
+
+.lang-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+
+.lang-list li.active {
+  background: var(--line);
+}
+
+.lang-code {
+  width: 24px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+}
+
+.lang-name {
+  font-size: 16px;
+}
+
+/* the language in use */
+.lang-list li[aria-selected='true'] {
+  color: var(--accent);
+}
+
 .field {
   position: relative;
   display: flex;
@@ -175,6 +249,7 @@ main {
 
 .problem h2 {
   margin: 0 0 10px;
+  color: var(--text);
   padding-bottom: 6px;
   border-bottom: 3px solid var(--text);
   font-size: 26px;
@@ -370,6 +445,38 @@ main {
   text-decoration: underline;
   text-decoration-thickness: 2px;
   text-underline-offset: 4px;
+}
+
+/* Danish: basic forms, passive and participle in one grid
+   (label | forms), so the forms line up across sections */
+.dgrid {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  column-gap: 20px;
+  /* the basic forms sit right under the headword's rule */
+  margin-top: 12px;
+}
+
+/* sections and rows place their cells directly in the grid */
+.dgrid-section,
+.dgrid-row {
+  display: contents;
+}
+
+.dgrid h3 {
+  grid-column: 1 / -1;
+  margin: 24px 0 4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--text);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.dgrid-row > span {
+  padding: 4px 0;
+  overflow-wrap: break-word;
 }
 
 /* break lines only between words, never inside allé(e)(s) */

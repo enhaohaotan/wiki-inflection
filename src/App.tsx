@@ -1,13 +1,11 @@
 import { useEffect, useState } from 'react';
-import { addRecent, readRecent, type RecentItem } from './features/lookup/cache';
+import { addRecent, readRecent, writeLastLanguage, type RecentItem } from './features/lookup/cache';
 import { navigate, useRoute } from './features/lookup/route';
 import { SearchBar } from './features/lookup/SearchBar';
 import { useLookup, type LookupState } from './features/lookup/useLookup';
-import { defaultLanguage, getLanguage } from './languages/registry';
+import { defaultLanguage, getLanguage, languages, type LanguageModule } from './languages/registry';
 import { entryViews } from './languages/views';
 import { pageUrl } from './wiktionary/client';
-
-const EXAMPLES = ['aller', 'être', 'avoir', 'faire', 'prendre', 'finir'];
 
 export function App() {
   const route = useRoute();
@@ -17,6 +15,10 @@ export function App() {
   const [recent, setRecent] = useState<RecentItem[]>(readRecent);
 
   const search = (word: string) => navigate({ lang: language.code, word });
+  // Switching language looks the current word up again in the new language.
+  const switchLanguage = (code: string) => navigate({ lang: code, word: route.word });
+
+  useEffect(() => writeLastLanguage(language.code), [language.code]);
 
   useEffect(() => {
     document.title = route.word ? `${route.word} – Conjugaison` : 'Conjugaison';
@@ -38,14 +40,21 @@ export function App() {
           <SearchBar
             value={route.word}
             inputLang={language.code}
+            languages={languages}
             onSearch={search}
+            onLanguageChange={switchLanguage}
           />
         </div>
       </header>
 
       <main>
         {state.status === 'idle' && (
-          <Home recent={recent.filter((r) => r.lang === language.code)} onPick={search} />
+          <Home
+            recent={recent.filter((r) => r.lang === language.code)}
+            examples={language.examples}
+            lang={language.code}
+            onPick={search}
+          />
         )}
         {state.status === 'loading' && (
           <p className="status" role="status">
@@ -59,7 +68,12 @@ export function App() {
             highlight={state.match?.form}
           />
         )}
-        <Problem state={state} languageName={language.name} onRetry={() => setAttempt((n) => n + 1)} />
+        <Problem
+          state={state}
+          language={language}
+          onRetry={() => setAttempt((n) => n + 1)}
+          onSwitch={switchLanguage}
+        />
       </main>
 
       <footer className="credits">
@@ -87,15 +101,25 @@ export function App() {
   );
 }
 
-function Home({ recent, onPick }: { recent: RecentItem[]; onPick(word: string): void }) {
-  const words = recent.length > 0 ? recent.map((r) => r.word) : EXAMPLES;
+function Home({
+  recent,
+  examples,
+  lang,
+  onPick,
+}: {
+  recent: RecentItem[];
+  examples: string[];
+  lang: string;
+  onPick(word: string): void;
+}) {
+  const words = recent.length > 0 ? recent.map((r) => r.word) : examples;
   return (
     <section className="home">
       <h2>{recent.length > 0 ? 'Recent' : 'Examples'}</h2>
       <ul className="words">
         {words.map((word) => (
           <li key={word}>
-            <button type="button" lang="fr" onClick={() => onPick(word)}>
+            <button type="button" lang={lang} onClick={() => onPick(word)}>
               {word}
             </button>
           </li>
@@ -107,13 +131,16 @@ function Home({ recent, onPick }: { recent: RecentItem[]; onPick(word: string): 
 
 function Problem({
   state,
-  languageName,
+  language,
   onRetry,
+  onSwitch,
 }: {
   state: LookupState;
-  languageName: string;
+  language: LanguageModule;
   onRetry(): void;
+  onSwitch(code: string): void;
 }) {
+  const languageName = language.name;
   switch (state.status) {
     case 'not-found':
       return (
@@ -132,6 +159,15 @@ function Problem({
               {state.available.length > 6 && '…'}
             </p>
           )}
+          {languages
+            .filter((l) => l.code !== language.code && state.available.includes(l.heading))
+            .map((l) => (
+              <p key={l.code}>
+                <button type="button" onClick={() => onSwitch(l.code)}>
+                  Look up in {l.name}
+                </button>
+              </p>
+            ))}
         </div>
       );
     case 'no-inflection':
