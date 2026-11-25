@@ -7,9 +7,17 @@ interface Props {
   languages: readonly LanguageOption[];
   onSearch(word: string): void;
   onLanguageChange(code: string): void;
+  placeholder?: string;
 }
 
-export function SearchBar({ value, inputLang, languages, onSearch, onLanguageChange }: Props) {
+export function SearchBar({
+  value,
+  inputLang,
+  languages,
+  onSearch,
+  onLanguageChange,
+  placeholder = 'Look up inflections',
+}: Props) {
   const [text, setText] = useState(value);
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => setText(value), [value]);
@@ -35,7 +43,7 @@ export function SearchBar({ value, inputLang, languages, onSearch, onLanguageCha
           name="q"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Look up inflections"
+          placeholder={placeholder}
           aria-label="Word to look up"
           lang={inputLang}
           enterKeyHint="search"
