@@ -15,7 +15,7 @@ import { verbWeight } from './weights';
  * Conjugation practice: type a French verb, fill in its forms tense by
  * tense, then check what you filled in or compare with the answers.
  * Tables come from the same lookup (and the same cache) as the viewer.
- * The verb lives in the hash (conjugation.html#aller, served as /conjugation#aller) so it can be bookmarked.
+ * The verb lives in the hash (verbs.html#aller, served as /verbs#aller) so it can be bookmarked.
  */
 
 function readHash(): string {
