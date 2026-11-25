@@ -23,6 +23,11 @@ export interface Exercise {
   fr: string;
   /** Built from an auxiliary and the past participle. */
   compound: boolean;
+  /**
+   * Shown folded at first: compound tenses (mostly the auxiliary again) and
+   * the literary tenses, which everyday French doesn't use.
+   */
+  folded: boolean;
   blanks: Blank[];
 }
 
@@ -37,15 +42,17 @@ export interface SheetSection {
 export interface Sheet {
   lemma: string;
   pos: string;
+  /** Shown beside the headword instead of the part of speech, e.g. "voix passive". */
+  posLabel?: string;
   sections: SheetSection[];
 }
 
-type Person = '1' | '2' | '3';
-type Num = 's' | 'p';
-type Kind = 'plain' | 'subjunctive' | 'imperative';
+export type Person = '1' | '2' | '3';
+export type Num = 's' | 'p';
+export type Kind = 'plain' | 'subjunctive' | 'imperative';
 
 /** Same order as the rows of the layout. */
-const ALL_PERSONS: [Person, Num][] = [
+export const ALL_PERSONS: [Person, Num][] = [
   ['1', 's'],
   ['2', 's'],
   ['3', 's'],
@@ -53,13 +60,24 @@ const ALL_PERSONS: [Person, Num][] = [
   ['2', 'p'],
   ['3', 'p'],
 ];
-const IMPERATIVE_PERSONS: [Person, Num][] = [
+export const IMPERATIVE_PERSONS: [Person, Num][] = [
   ['2', 's'],
   ['1', 'p'],
   ['2', 'p'],
 ];
 
-const KINDS: Record<string, Kind> = { subjonctif: 'subjunctive', imperatif: 'imperative' };
+export const KINDS: Record<string, Kind> = { subjonctif: 'subjunctive', imperatif: 'imperative' };
+
+/** Tenses of written narrative only: passé simple, passé antérieur, imperfect and pluperfect subjunctive. */
+const LITERARY: Record<string, string[]> = {
+  indicatif: ['Passé simple', 'Passé antérieur'],
+  subjonctif: ['Imparfait', 'Plus-que-parfait'],
+};
+
+/** Whether a tense starts folded on the sheet. */
+export function startsFolded(moodId: string, tense: string, compound: boolean): boolean {
+  return compound || (LITERARY[moodId]?.includes(tense) ?? false);
+}
 
 /** For comparing answers: case, apostrophes and spacing don't count; accents do. */
 export function normalizeAnswer(text: string): string {
@@ -126,7 +144,12 @@ export function buildSheet(table: InflectionTable): Sheet {
       pairs: mood.pairs.map((pair) =>
         [pair.simple, pair.compound]
           .filter((t): t is TenseBlock => t !== undefined)
-          .map((t) => ({ fr: t.fr, compound: t.compound, blanks: blanksOf(`${mood.id}/${t.fr}`, t, persons, kind) })),
+          .map((t) => ({
+            fr: t.fr,
+            compound: t.compound,
+            folded: startsFolded(mood.id, t.fr, t.compound),
+            blanks: blanksOf(`${mood.id}/${t.fr}`, t, persons, kind),
+          })),
       ),
     };
   });
@@ -140,6 +163,7 @@ export function buildSheet(table: InflectionTable): Sheet {
           {
             fr: 'Participe',
             compound: false,
+            folded: false,
             blanks: c.participles.map((p) => ({
               id: `participe/${p.fr}`,
               label: p.fr.toLowerCase(),

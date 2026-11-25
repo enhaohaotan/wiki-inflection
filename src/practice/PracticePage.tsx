@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
-import type { InflectionTable } from '../core/types';
 import { SearchBar } from '../features/lookup/SearchBar';
 import { useLookup, type LookupState } from '../features/lookup/useLookup';
 import { french } from '../languages/fr';
-import { mainTable } from '../languages/fr/verb/layout';
 import { Headword } from '../ui/Headword';
 import { JumpNav } from '../ui/JumpNav';
 import { pageUrl } from '../wiktionary/client';
-import { buildSheet, isCorrect, type Blank, type Exercise } from './sheet';
+import { ownSheet } from './ownTables';
+import { practiceTable, savedTable } from './savedTables';
+import { buildSheet, isCorrect, type Blank, type Exercise, type Sheet } from './sheet';
+import { randomVerb } from './verbs';
+import { verbWeight } from './weights';
 
 /**
  * Conjugation practice: type a French verb, fill in its forms tense by
@@ -43,16 +45,17 @@ const SHORT_NAMES: Record<string, string> = {
   participe: 'Part.',
 };
 
-/** The table to practise: after a reverse lookup (vais), the verb's own table. */
-function tableOf(state: Extract<LookupState, { status: 'ok' }>): InflectionTable | undefined {
-  return state.match ? mainTable(state.entry, state.match.form) : state.entry.tables[0];
-}
-
 export function PracticePage() {
   const word = useHashWord();
   const [attempt, setAttempt] = useState(0);
-  const state = useLookup(french, word, undefined, attempt);
-  const table = state.status === 'ok' ? tableOf(state) : undefined;
+  // Verbs on the practice list come with the page and work offline; s'aimer
+  // and être aimé are not on Wiktionary, so their tables are kept here.
+  // Any other verb is looked up on Wiktionary.
+  const own = useMemo(() => ownSheet(word), [word]);
+  const saved = useMemo(() => (own ? undefined : savedTable(word)), [own, word]);
+  const state = useLookup(french, own || saved ? '' : word, undefined, attempt);
+  const table = saved ?? (state.status === 'ok' ? practiceTable(state) : undefined);
+  const sheet = useMemo(() => own ?? (table ? buildSheet(table) : undefined), [own, table]);
 
   useEffect(() => {
     document.title = word ? `${word} – Exercices` : 'Exercices de conjugaison';
@@ -70,23 +73,41 @@ export function PracticePage() {
             onSearch={(w) => (window.location.hash = encodeURIComponent(w))}
             onLanguageChange={() => {}}
           />
+          <button
+            type="button"
+            className="random"
+            title="Practise a random model verb"
+            onClick={() => (window.location.hash = encodeURIComponent(randomVerb(word, Math.random, verbWeight)))}
+          >
+            Random
+          </button>
         </div>
       </header>
 
       <main>
-        {state.status === 'idle' && <p className="status">Type a French verb to practise its conjugation.</p>}
+        {state.status === 'idle' && !sheet && <p className="status">Type a French verb to practise its conjugation.</p>}
         {state.status === 'loading' && (
           <p className="status" role="status">
             Looking up <b>{state.query}</b>…
           </p>
         )}
         {/* A new table starts a fresh sheet. */}
-        {table && <Drill key={`${table.lemma}\n${table.title}`} table={table} />}
+        {sheet && <Drill key={sheet.lemma} sheet={sheet} />}
         <Problem state={state} onRetry={() => setAttempt((n) => n + 1)} />
       </main>
 
       <footer className="credits">
-        {state.status === 'ok' ? (
+        {own ? (
+          <>“{own.lemma}” is not on Wiktionary; its table is kept in this project. Other verbs: Wiktionary, </>
+        ) : saved ? (
+          <>
+            From{' '}
+            <a href={pageUrl(saved.lemma)} target="_blank" rel="noreferrer">
+              “{saved.lemma}”
+            </a>{' '}
+            on Wiktionary (saved with the page),{' '}
+          </>
+        ) : state.status === 'ok' ? (
           <>
             From{' '}
             <a href={pageUrl(state.entry.title)} target="_blank" rel="noreferrer">
@@ -105,8 +126,7 @@ export function PracticePage() {
   );
 }
 
-function Drill({ table }: { table: InflectionTable }) {
-  const sheet = useMemo(() => buildSheet(table), [table]);
+function Drill({ sheet }: { sheet: Sheet }) {
   const root = useRef<HTMLElement>(null);
   const [values, setValues] = useState<Record<string, string>>({});
   /** Right or wrong, for the blanks that were filled in at the last check and not edited since. */
@@ -152,7 +172,7 @@ function Drill({ table }: { table: InflectionTable }) {
 
   return (
     <article className="conjugation drill" ref={root}>
-      <Headword lemma={sheet.lemma} lang="fr" pos={sheet.pos} />
+      <Headword lemma={sheet.lemma} lang="fr" pos={sheet.pos} label={sheet.posLabel} />
       <JumpNav
         lang="fr"
         targets={sheet.sections.map((s) => ({ id: `p-${s.id}`, name: s.fr, short: SHORT_NAMES[s.id] ?? s.fr }))}
@@ -217,13 +237,12 @@ function ExerciseBlock({
   onChange(id: string, value: string): void;
   onKeyDown(e: KeyboardEvent<HTMLInputElement>): void;
 }) {
-  // Compound tenses are mostly the auxiliary again, so they start folded.
-  // Answers typed in a folded tense are kept.
-  const [open, setOpen] = useState(!exercise.compound);
+  // Compound and literary tenses start folded. Answers typed in a folded tense are kept.
+  const [open, setOpen] = useState(!exercise.folded);
   return (
     <section className="drill-tense">
       <h3 lang="fr">
-        {exercise.compound ? (
+        {exercise.folded ? (
           <button type="button" className="fold" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
             {exercise.fr}
             <svg viewBox="0 0 10 6" width="10" height="6" aria-hidden="true">

@@ -4,6 +4,8 @@ import { describe, expect, it } from 'vitest';
 import { french } from '../languages/fr';
 import { findLanguageSection, parsePage } from '../wiktionary/page';
 import { buildSheet, expandForm, isCorrect, type Blank, type Sheet } from './sheet';
+import { PRACTICE_VERBS, randomVerb } from './verbs';
+import { fromStored, storeTable } from './savedTables';
 
 function section(fixture: string): Element | null {
   try {
@@ -101,5 +103,33 @@ describe('buildSheet', () => {
     const reflexive = sheet.sections[0]!.pairs[0]![0]!.blanks[0]!;
     const form = reflexive.forms[0]!;
     expect(isCorrect(form.replace(/'/g, '’'), reflexive)).toBe(true);
+  });
+});
+
+describe('randomVerb', () => {
+  it('never picks the verb already shown', () => {
+    const [first, second] = PRACTICE_VERBS;
+    expect(randomVerb(first, () => 0)).toBe(second);
+    expect(randomVerb(second, () => 0)).toBe(first);
+    expect(randomVerb(first, () => 0.9999)).toBe(PRACTICE_VERBS.at(-1));
+    expect(PRACTICE_VERBS).not.toContain('gésir');
+    expect(new Set(PRACTICE_VERBS).size).toBe(PRACTICE_VERBS.length);
+  });
+});
+
+describe('saved tables', () => {
+  it('give the same sheet as the table they were saved from', async () => {
+    for (const verb of ['aller', 'passer', 'asseoir', 'pleuvoir']) {
+      const entry = await french.enrich!(french.parse(section(verb)!, verb), async (t) => section(`pp-${t}`), async () => null);
+      const table = entry.tables[0]!;
+      const restored = fromStored(JSON.parse(JSON.stringify(storeTable(table))));
+      expect(buildSheet(restored), verb).toEqual(buildSheet(table));
+    }
+  });
+});
+
+describe('the practice list', () => {
+  it('has 200 verbs', () => {
+    expect(PRACTICE_VERBS).toHaveLength(200);
   });
 });

@@ -10,6 +10,24 @@
   }
 }
 
+/* beside Search, in the same style */
+.random {
+  flex: none;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.random:hover {
+  color: var(--accent);
+}
+
 /* simple tense | compound tense, side by side; stacked on narrow screens */
 .drill-pair {
   display: grid;
