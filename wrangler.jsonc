@@ -1,0 +1,10 @@
+// Cloudflare Workers deployment: the site is static, so the Worker only
+// serves the files `npm run build` writes to dist/ (index.html, practice.html
+// and their assets). Cloudflare builds and deploys on every push to main.
+{
+  "name": "wiki-inflection",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./dist"
+  }
+}
