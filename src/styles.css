@@ -293,8 +293,11 @@ main {
   text-decoration: none;
 }
 
-.tables a:hover {
-  color: var(--accent);
+/* not on touch screens, where a tapped link would stay red */
+@media (hover: hover) {
+  .tables a:hover {
+    color: var(--accent);
+  }
 }
 
 /* ---- conjugation ---- */
@@ -355,8 +358,11 @@ main {
   text-decoration: none;
 }
 
-.jump a:hover {
-  color: var(--accent);
+/* not on touch screens, where a tapped link would stay red */
+@media (hover: hover) {
+  .jump a:hover {
+    color: var(--accent);
+  }
 }
 
 .mood {

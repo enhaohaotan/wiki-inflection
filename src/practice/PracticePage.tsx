@@ -15,7 +15,7 @@ import { verbWeight } from './weights';
  * Conjugation practice: type a French verb, fill in its forms tense by
  * tense, then check what you filled in or compare with the answers.
  * Tables come from the same lookup (and the same cache) as the viewer.
- * The verb lives in the hash (practice.html#aller) so it can be bookmarked.
+ * The verb lives in the hash (conjugation.html#aller, served as /conjugation#aller) so it can be bookmarked.
  */
 
 function readHash(): string {
@@ -84,7 +84,7 @@ export function PracticePage() {
   const sheet = useMemo(() => own ?? (table ? buildSheet(table) : undefined), [own, table]);
 
   useEffect(() => {
-    document.title = word ? `${word} – Exercices` : 'Exercices de conjugaison';
+    document.title = word ? `${word} – Conjugation Practice` : 'Conjugation Practice';
     // A verb picked lower down the home page opens at its top.
     window.scrollTo(0, 0);
   }, [word]);

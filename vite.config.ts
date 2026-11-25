@@ -11,7 +11,7 @@ export default defineConfig({
       // The conjugation viewer and the conjugation practice page.
       input: {
         main: fileURLToPath(new URL('./index.html', import.meta.url)),
-        practice: fileURLToPath(new URL('./practice.html', import.meta.url)),
+        conjugation: fileURLToPath(new URL('./conjugation.html', import.meta.url)),
       },
     },
   },

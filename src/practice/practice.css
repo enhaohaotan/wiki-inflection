@@ -1,4 +1,4 @@
-/* Conjugation practice (practice.html). Builds on styles.css. */
+/* Conjugation practice (conjugation.html). Builds on styles.css. */
 
 :root {
   --right: #1f7a3a;
@@ -27,10 +27,6 @@
   text-decoration: none;
   text-transform: uppercase;
   cursor: pointer;
-}
-
-.random:hover {
-  color: var(--accent);
 }
 
 /* simple tense | compound tense, side by side; stacked on narrow screens */
@@ -91,10 +87,6 @@
 
 .fold[aria-expanded='true'] svg {
   transform: none;
-}
-
-.fold:hover {
-  color: var(--accent);
 }
 
 .drill-row {
@@ -236,10 +228,6 @@
   border-color: var(--accent);
 }
 
-.home:hover {
-  color: var(--accent);
-}
-
 /* ---- home: the verbs on the practice list, one per line ---- */
 
 .verb-list {
@@ -269,6 +257,13 @@
   border-bottom: 3px solid var(--text);
 }
 
-.verb-list a:hover {
-  color: var(--accent);
+/* Hover colours only where there is a pointer to hover with: on a touch
+   screen a tapped link would otherwise stay red. */
+@media (hover: hover) {
+  .home:hover,
+  .random:hover,
+  .fold:hover,
+  .verb-list a:hover {
+    color: var(--accent);
+  }
 }

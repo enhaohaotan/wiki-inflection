@@ -25,7 +25,7 @@ export function App() {
 
   useEffect(() => {
     const word = Page ? '' : route.word;
-    document.title = word ? `${word} – Conjugaison` : 'Conjugaison';
+    document.title = word ? `${word} – Wiki Inflection` : 'Wiki Inflection';
   }, [route.word, Page]);
 
   useEffect(() => {
