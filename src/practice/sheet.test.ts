@@ -5,7 +5,7 @@ import { french } from '../languages/fr';
 import { findLanguageSection, parsePage } from '../wiktionary/page';
 import { buildSheet, expandForm, isCorrect, type Blank, type Sheet } from './sheet';
 import { PRACTICE_VERBS, randomVerb } from './verbs';
-import { fromStored, storeTable } from './savedTables';
+import { fromStored, lacksAgreement, storeTable } from './savedTables';
 
 function section(fixture: string): Element | null {
   try {
@@ -114,6 +114,17 @@ describe('randomVerb', () => {
     expect(randomVerb(first, () => 0.9999)).toBe(PRACTICE_VERBS.at(-1));
     expect(PRACTICE_VERBS).not.toContain('gésir');
     expect(new Set(PRACTICE_VERBS).size).toBe(PRACTICE_VERBS.length);
+  });
+});
+
+describe('lacksAgreement', () => {
+  it('spots a table with être whose agreed participles were not fetched', async () => {
+    const parsed = french.parse(section('aller')!, 'aller').tables[0]!;
+    expect(lacksAgreement(parsed)).toBe(true);
+    const entry = await french.enrich!(french.parse(section('aller')!, 'aller'), async (t) => section(`pp-${t}`), async () => null);
+    expect(lacksAgreement(entry.tables[0]!)).toBe(false);
+    // avoir verbs need none
+    expect(lacksAgreement(french.parse(section('manger')!, 'manger').tables[0]!)).toBe(false);
   });
 });
 

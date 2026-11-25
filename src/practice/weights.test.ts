@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { french } from '../languages/fr';
 import { findLanguageSection, parsePage } from '../wiktionary/page';
 import { startsFolded } from './sheet';
-import { PRACTICE_VERBS, randomVerb } from './verbs';
+import { KEY_VERBS, PRACTICE_VERBS, randomVerb } from './verbs';
 import { kindOf } from './weights';
 
 function table(verb: string) {
@@ -37,6 +37,13 @@ describe('randomVerb', () => {
     const weight = (v: string) => (v === heavy ? 1000 : 1);
     const picks = Array.from({ length: 100 }, (_, i) => randomVerb(undefined, () => i / 100, weight));
     expect(picks.filter((v) => v === heavy).length).toBeGreaterThan(80);
+  });
+});
+
+describe('KEY_VERBS', () => {
+  it('are all on the practice list', () => {
+    expect(KEY_VERBS.filter((v) => !PRACTICE_VERBS.includes(v))).toEqual([]);
+    expect(KEY_VERBS).toHaveLength(20);
   });
 });
 

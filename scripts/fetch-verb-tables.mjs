@@ -28,18 +28,19 @@ const server = await createServer({
 });
 
 try {
-  const { lookup } = await server.ssrLoadModule('/src/features/lookup/lookup.ts');
-  const { french } = await server.ssrLoadModule('/src/languages/fr/index.ts');
+  const { practiceLookup } = await server.ssrLoadModule('/src/practice/practiceLookup.ts');
   const { PRACTICE_VERBS } = await server.ssrLoadModule('/src/practice/verbs.ts');
   const { OWN_LEMMAS } = await server.ssrLoadModule('/src/practice/ownTables.ts');
-  const { practiceTable, storeTable } = await server.ssrLoadModule('/src/practice/savedTables.ts');
+  const { lacksAgreement, storeTable } = await server.ssrLoadModule('/src/practice/savedTables.ts');
 
   const previous = existsSync(OUT) && !all ? JSON.parse(readFileSync(OUT, 'utf8')) : { tables: {}, missing: {} };
   const tables = { ...previous.tables };
   const missing = {};
   // s'aimer and être aimé are not on Wiktionary; their tables are in ownTables.ts.
   const verbs = PRACTICE_VERBS.filter((v) => !OWN_LEMMAS.includes(v));
-  const todo = verbs.filter((v) => !tables[v]);
+  // Also again any verb saved as another verb's table (se coucher saved as
+  // coucher), or saved without its agreed participles.
+  const todo = verbs.filter((v) => tables[v]?.lemma !== v || lacksAgreement(tables[v]));
   console.log(`${verbs.length} verbs, ${todo.length} to fetch`);
 
   const save = () => {
@@ -47,20 +48,23 @@ try {
     const ordered = Object.fromEntries(verbs.filter((v) => tables[v]).map((v) => [v, tables[v]]));
     const file = { fetched: new Date().toISOString().slice(0, 10), tables: ordered, missing };
     writeFileSync(OUT, `${JSON.stringify(file)}\n`);
+    return Object.keys(ordered).length;
   };
 
   for (const [i, verb] of todo.entries()) {
     let result;
     // Wiktionary rate-limits bursts: wait and try again.
     for (let attempt = 0; attempt < 5; attempt++) {
-      result = await lookup(french, verb);
-      if (result.status !== 'error') break;
+      result = await practiceLookup(verb);
+      // A table without its agreed participles was cut short by the rate limit too.
+      const incomplete = result.status === 'ok' && lacksAgreement(result.table);
+      if (result.status !== 'error' && !incomplete) break;
       const wait = (result.retryAfter ?? 10 * (attempt + 1)) * 1000;
-      console.log(`  ${verb}: ${result.kind}, retrying in ${wait / 1000}s`);
+      console.log(`  ${verb}: ${incomplete ? 'participle forms missing' : result.kind}, retrying in ${wait / 1000}s`);
       await sleep(wait);
     }
 
-    const table = result.status === 'ok' ? practiceTable(result) : undefined;
+    const table = result.status === 'ok' ? result.table : undefined;
     if (table) {
       tables[verb] = storeTable(table);
       if (table.lemma !== verb) console.log(`  ${verb}: saved as the table of ${table.lemma}`);
@@ -75,8 +79,8 @@ try {
     await sleep(1000);
   }
 
-  save();
-  console.log(`saved ${Object.keys(tables).length} tables; missing: ${Object.keys(missing).join(', ') || 'none'}`);
+  const saved = save();
+  console.log(`saved ${saved} tables; missing: ${Object.keys(missing).join(', ') || 'none'}`);
 } finally {
   await server.close();
 }

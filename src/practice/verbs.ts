@@ -45,6 +45,23 @@ export const PRACTICE_VERBS: readonly string[] = [
 ];
 
 /**
+ * Shown first on the home page, numbered, in the order a learner needs them:
+ * the auxiliaries; aller and faire; the modal verbs with falloir (il faut,
+ * standing for the impersonal verbs) and savoir; the other irregular verbs
+ * used all the time; a model of each group (aimer, finir, rendre); then aimer
+ * as a pronominal and a passive verb (s'aimer, être aimé), as in the key
+ * tables of conjugation books.
+ */
+export const KEY_VERBS: readonly string[] = [
+  'être', 'avoir',
+  'aller', 'faire',
+  'pouvoir', 'vouloir', 'devoir', 'falloir', 'savoir',
+  'dire', 'voir', 'prendre', 'venir', 'mettre', 'partir',
+  'aimer', 'finir', 'rendre',
+  "s'aimer", 'être aimé',
+];
+
+/**
  * A verb from the list, other than `current` so the button always changes the
  * page. `weight` sets how likely each verb is (see weights.ts).
  */

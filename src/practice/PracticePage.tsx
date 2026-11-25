@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { SearchBar } from '../features/lookup/SearchBar';
-import { useLookup, type LookupState } from '../features/lookup/useLookup';
-import { french } from '../languages/fr';
 import { Headword } from '../ui/Headword';
 import { JumpNav } from '../ui/JumpNav';
 import { pageUrl } from '../wiktionary/client';
 import { ownSheet } from './ownTables';
-import { practiceTable, savedTable } from './savedTables';
+import { practiceLookup, type PracticeResult } from './practiceLookup';
+import { plainVerb } from './pronominal';
+import { savedTable } from './savedTables';
 import { buildSheet, isCorrect, type Blank, type Exercise, type Sheet } from './sheet';
-import { randomVerb } from './verbs';
+import { KEY_VERBS, PRACTICE_VERBS, randomVerb } from './verbs';
 import { verbWeight } from './weights';
 
 /**
@@ -25,6 +25,32 @@ function readHash(): string {
   } catch {
     return raw.trim();
   }
+}
+
+type PracticeState = { status: 'idle' } | { status: 'loading'; query: string } | PracticeResult;
+
+/** Looks `word` up whenever it changes; `attempt` forces a retry. */
+function usePracticeLookup(word: string, attempt: number): PracticeState {
+  const [state, setState] = useState<PracticeState>({ status: 'idle' });
+  useEffect(() => {
+    if (!word) {
+      setState({ status: 'idle' });
+      return;
+    }
+    const controller = new AbortController();
+    setState({ status: 'loading', query: word });
+    practiceLookup(word, controller.signal)
+      .then((result) => {
+        if (!controller.signal.aborted) setState(result);
+      })
+      .catch((err: unknown) => {
+        if (controller.signal.aborted) return;
+        console.error(err);
+        setState({ status: 'error', kind: 'http' });
+      });
+    return () => controller.abort();
+  }, [word, attempt]);
+  return state;
 }
 
 function useHashWord(): string {
@@ -53,18 +79,23 @@ export function PracticePage() {
   // Any other verb is looked up on Wiktionary.
   const own = useMemo(() => ownSheet(word), [word]);
   const saved = useMemo(() => (own ? undefined : savedTable(word)), [own, word]);
-  const state = useLookup(french, own || saved ? '' : word, undefined, attempt);
-  const table = saved ?? (state.status === 'ok' ? practiceTable(state) : undefined);
+  const state = usePracticeLookup(own || saved ? '' : word, attempt);
+  const table = saved ?? (state.status === 'ok' ? state.table : undefined);
   const sheet = useMemo(() => own ?? (table ? buildSheet(table) : undefined), [own, table]);
 
   useEffect(() => {
     document.title = word ? `${word} – Exercices` : 'Exercices de conjugaison';
+    // A verb picked lower down the home page opens at its top.
+    window.scrollTo(0, 0);
   }, [word]);
 
   return (
     <>
       <header className="topbar">
         <div className="topbar-inner">
+          <a className="home" href="#" title="All verbs">
+            Home
+          </a>
           <SearchBar
             value={word}
             inputLang="fr"
@@ -76,7 +107,7 @@ export function PracticePage() {
           <button
             type="button"
             className="random"
-            title="Practise a random model verb"
+            title="Random verb"
             onClick={() => (window.location.hash = encodeURIComponent(randomVerb(word, Math.random, verbWeight)))}
           >
             Random
@@ -85,7 +116,7 @@ export function PracticePage() {
       </header>
 
       <main>
-        {state.status === 'idle' && !sheet && <p className="status">Type a French verb to practise its conjugation.</p>}
+        {!word && <Home />}
         {state.status === 'loading' && (
           <p className="status" role="status">
             Looking up <b>{state.query}</b>…
@@ -102,7 +133,7 @@ export function PracticePage() {
         ) : saved ? (
           <>
             From{' '}
-            <a href={pageUrl(saved.lemma)} target="_blank" rel="noreferrer">
+            <a href={pageUrl(plainVerb(saved.lemma))} target="_blank" rel="noreferrer">
               “{saved.lemma}”
             </a>{' '}
             on Wiktionary (saved with the page),{' '}
@@ -110,8 +141,8 @@ export function PracticePage() {
         ) : state.status === 'ok' ? (
           <>
             From{' '}
-            <a href={pageUrl(state.entry.title)} target="_blank" rel="noreferrer">
-              “{state.entry.title}”
+            <a href={pageUrl(state.page)} target="_blank" rel="noreferrer">
+              “{state.page}”
             </a>{' '}
             on Wiktionary,{' '}
           </>
@@ -123,6 +154,21 @@ export function PracticePage() {
         </a>
       </footer>
     </>
+  );
+}
+
+/** The home page: every verb on the practice list, each opening its exercises. */
+function Home() {
+  return (
+    <nav className="verb-list" aria-label="Verbs to practise" lang="fr">
+      {/* Numbered: the key verbs first, set off by a heavy rule, then the rest in dictionary order. */}
+      {[...KEY_VERBS, ...PRACTICE_VERBS.filter((v) => !KEY_VERBS.includes(v))].map((verb, i) => (
+        <a key={verb} href={`#${encodeURIComponent(verb)}`} className={i === KEY_VERBS.length - 1 ? 'last-key' : undefined}>
+          <span className="num">{String(i + 1).padStart(3, '0')}</span>
+          {verb}
+        </a>
+      ))}
+    </nav>
   );
 }
 
@@ -337,7 +383,7 @@ function BlankRow({
   );
 }
 
-function Problem({ state, onRetry }: { state: LookupState; onRetry(): void }) {
+function Problem({ state, onRetry }: { state: PracticeState; onRetry(): void }) {
   switch (state.status) {
     case 'not-found':
       return (

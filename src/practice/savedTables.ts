@@ -1,5 +1,6 @@
 import type { InflectionTable } from '../core/types';
 import type { LookupResult } from '../features/lookup/lookup';
+import { auxiliariesInRule } from '../languages/fr/verb/auxiliaries';
 import { mainTable } from '../languages/fr/verb/layout';
 import { toPageTitle } from '../wiktionary/client';
 import saved from './data/verbTables.json?raw';
@@ -32,6 +33,20 @@ export interface SavedTables {
 /** The table a lookup result is practised with: after a reverse lookup (vais), the verb's own table. */
 export function practiceTable(result: Extract<LookupResult, { status: 'ok' }>): InflectionTable | undefined {
   return result.match ? mainTable(result.entry, result.match.form) : result.entry.tables[0];
+}
+
+/**
+ * Whether a table lacks the agreed participle forms (allée, allés, allées)
+ * its compound tenses with être need. They come from a second page, so a
+ * lookup interrupted by Wiktionary's rate limit can return the table without
+ * them; it is then fetched again rather than saved incomplete.
+ */
+export function lacksAgreement(table: Pick<StoredTable, 'inflections' | 'periphrastic'>): boolean {
+  const usesEtre = table.periphrastic.some(
+    (p) => !p.key.startsWith('nonfinite') && auxiliariesInRule(p.rule).some((u) => u.auxiliary === 'être'),
+  );
+  const agreed = table.inflections.some((i) => i.tags[0] === 'pp' && i.tags.length === 3);
+  return usesEtre && !agreed;
 }
 
 export function storeTable(table: InflectionTable): StoredTable {
