@@ -7,11 +7,9 @@ import type { LanguageEntry } from '../../core/types';
  */
 
 // Bump when the shape of LanguageEntry or a parser's output changes.
-const VERSION = 3;
+const VERSION = 14;
 const PREFIX = `wikt:v${VERSION}:`;
 const MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
-const RECENT_KEY = 'wikt:recent';
-const MAX_RECENT = 8;
 
 interface Stored {
   savedAt: number;
@@ -94,29 +92,22 @@ export function writeLastLanguage(code: string): void {
   }
 }
 
-export interface RecentItem {
-  lang: string;
-  word: string;
-}
-
-export function readRecent(): RecentItem[] {
+/** Any small parsed data worth keeping, e.g. a language's reference tables. */
+export function readStored<T>(key: string): T | null {
   try {
-    const parsed: unknown = JSON.parse(localStorage.getItem(RECENT_KEY) ?? '[]');
-    return Array.isArray(parsed) ? (parsed as RecentItem[]) : [];
+    const raw = localStorage.getItem(`${PREFIX}${key}`);
+    if (!raw) return null;
+    const stored = JSON.parse(raw) as { savedAt: number; value: T };
+    return Date.now() - stored.savedAt > MAX_AGE_MS ? null : stored.value;
   } catch {
-    return [];
+    return null;
   }
 }
 
-export function addRecent(item: RecentItem): RecentItem[] {
-  const next = [item, ...readRecent().filter((r) => r.lang !== item.lang || r.word !== item.word)].slice(
-    0,
-    MAX_RECENT,
-  );
+export function writeStored(key: string, value: unknown): void {
   try {
-    localStorage.setItem(RECENT_KEY, JSON.stringify(next));
+    localStorage.setItem(`${PREFIX}${key}`, JSON.stringify({ savedAt: Date.now(), value }));
   } catch {
     /* best-effort */
   }
-  return next;
 }

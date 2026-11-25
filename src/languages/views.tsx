@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
 import type { InflectionTable, LanguageEntry } from '../core/types';
+import { DanishAdjectiveView } from './da/adjective/AdjectiveView';
+import { DanishAdverbView } from './da/adverb/AdverbView';
+import { DanishNounView } from './da/noun/NounView';
+import { DanishNumeralView } from './da/numeral/NumeralView';
+import { DanishPronounView } from './da/pronoun/PronounView';
 import { DanishVerbView } from './da/verb/VerbView';
-import { danishMainTable, danishTablesWithMatch } from './da/verb/layout';
+import { danishMainTables, danishTablesWithMatch } from './da/verb/layout';
 import { ConjugationView } from './fr/verb/ConjugationView';
 import { mainTable, tablesWithMatch } from './fr/verb/layout';
 
@@ -23,8 +28,48 @@ interface TableKit {
   Table: ComponentType<{ table: InflectionTable; highlight?: string }>;
   /** For each table, whether it contains the looked-up form. */
   withMatch(tables: InflectionTable[], query: string | undefined): boolean[];
-  /** The one table that stands for an entry after a reverse lookup. */
-  main(entry: LanguageEntry, query: string): InflectionTable | undefined;
+  /** The tables that stand for an entry after a reverse lookup. */
+  main(entry: LanguageEntry, query: string): InflectionTable[];
+  /** Short name of a part of speech, to tell apart same-named tables (spise: verb and noun). */
+  posName?: Record<string, string>;
+}
+
+/**
+ * Drops a table that repeats an earlier one: os is a form of vi, and both
+ * pages carry the same table of all personal pronouns.
+ */
+function withoutRepeats(tables: InflectionTable[]): InflectionTable[] {
+  const seen = new Set<string>();
+  return tables.filter((t) => {
+    const key = `${t.title}\n${JSON.stringify(t.inflections)}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+/**
+ * Switcher labels, as short as they can be while still telling tables apart:
+ * - different words: the word (être · suivre);
+ * - one word, several parts of speech: just the part of speech (sb. · vb.),
+ *   since the headword below already names the word;
+ * - a mix: the word, plus the part of speech where the word repeats;
+ * - still the same (two noun declensions of øje): a number (sb. 1 · sb. 2).
+ */
+function tableLabels(tables: InflectionTable[], posName: Record<string, string> = {}): string[] {
+  const pos = (t: InflectionTable) => posName[t.pos] ?? t.pos;
+  const lemmas = new Set(tables.map((t) => t.lemma));
+  const repeats = (t: InflectionTable) => tables.filter((u) => u.lemma === t.lemma).length > 1;
+  const base = tables.map((t) =>
+    lemmas.size === 1 ? pos(t) : repeats(t) ? `${t.lemma} ${pos(t)}` : t.lemma,
+  );
+  const seen = new Map<string, number>();
+  return base.map((label) => {
+    if (base.filter((l) => l === label).length < 2) return label;
+    const n = (seen.get(label) ?? 0) + 1;
+    seen.set(label, n);
+    return `${label} ${n}`;
+  });
 }
 
 /**
@@ -39,7 +84,7 @@ function EntryView({ entries, initial, highlight, kit }: EntryViewProps & { kit:
   const tables = useMemo(
     () =>
       highlight
-        ? entries.map((entry) => kit.main(entry, highlight)).filter((t) => t !== undefined)
+        ? withoutRepeats(entries.flatMap((entry) => kit.main(entry, highlight)))
         : entries.flatMap((entry) => entry.tables),
     [entries, highlight, kit],
   );
@@ -63,6 +108,10 @@ function EntryView({ entries, initial, highlight, kit }: EntryViewProps & { kit:
     return () => cancelAnimationFrame(frame);
   }, [tables, highlight, selected]);
 
+  const labels = useMemo(() => tableLabels(tables, kit.posName), [tables, kit]);
+  // "Form of" only when every entry is another word; not when the word looked
+  // up has an entry of its own as well (små is an adjective and lille's plural).
+  const formOf = !!highlight && !entries.some((e) => e.title === highlight);
   const table = tables[selected] ?? tables[0];
   if (!table) return null;
   const { Table } = kit;
@@ -70,8 +119,8 @@ function EntryView({ entries, initial, highlight, kit }: EntryViewProps & { kit:
   return (
     <div ref={root}>
       {tables.length > 1 && (
-        <nav className="switcher" aria-label={highlight ? 'Form of' : 'Tables on this page'}>
-          {highlight && <span className="label">Form of</span>}
+        <nav className="switcher" aria-label={formOf ? 'Form of' : 'Tables on this page'}>
+          {formOf && <span className="label">Form of</span>}
           {tables.map((t, i) => (
             <button
               key={`${i}:${t.title}`}
@@ -83,12 +132,13 @@ function EntryView({ entries, initial, highlight, kit }: EntryViewProps & { kit:
                 setSelected(i);
               }}
             >
-              {t.lemma}
+              {labels[i]}
             </button>
           ))}
         </nav>
       )}
-      <Table key={selected} table={table} highlight={highlight} />
+      {/* No highlight in the looked-up word's own table: there it is just the headword. */}
+      <Table key={selected} table={table} highlight={table.lemma === highlight ? undefined : highlight} />
     </div>
   );
 }
@@ -98,14 +148,29 @@ const french: TableKit = {
   Table: ({ table, highlight }) => <ConjugationView table={table} idPrefix="t0-" highlight={highlight} />,
   withMatch: tablesWithMatch,
   // Pronominal variants (s'être) are left to a lookup of the verb itself.
-  main: mainTable,
+  main: (entry, query) => {
+    const table = mainTable(entry, query);
+    return table ? [table] : [];
+  },
 };
+
+/** Danish pages can hold verbs, nouns, adjectives, adverbs and pronouns; each is drawn by its own view. */
+function DanishTable({ table, highlight }: { table: InflectionTable; highlight?: string }) {
+  if (table.pos === 'noun') return <DanishNounView table={table} highlight={highlight} />;
+  if (table.pos === 'adjective') return <DanishAdjectiveView table={table} highlight={highlight} />;
+  if (table.pos === 'adverb') return <DanishAdverbView table={table} highlight={highlight} />;
+  if (table.pos === 'pronoun') return <DanishPronounView table={table} highlight={highlight} />;
+  if (table.pos === 'numeral') return <DanishNumeralView table={table} highlight={highlight} />;
+  return <DanishVerbView table={table} highlight={highlight} />;
+}
 
 const danish: TableKit = {
   lang: 'da',
-  Table: DanishVerbView,
+  Table: DanishTable,
   withMatch: danishTablesWithMatch,
-  main: danishMainTable,
+  main: danishMainTables,
+  // Abbreviations used in Danish dictionaries: substantiv, verbum.
+  posName: { verb: 'vb.', noun: 'sb.', adjective: 'adj.', adverb: 'adv.', pronoun: 'pron.', numeral: 'num.' },
 };
 
 const withKit = (kit: TableKit) =>

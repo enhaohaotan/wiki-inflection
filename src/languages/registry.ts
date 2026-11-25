@@ -5,6 +5,9 @@ import type { LanguageEntry } from '../core/types';
  * null when the page or the section does not exist. Throws on network errors.
  */
 export type SectionFetcher = (title: string) => Promise<Element | null>;
+
+/** Fetches a whole page (e.g. an appendix, which has no language section), or null. */
+export type DocumentFetcher = (title: string) => Promise<Document | null>;
 import { danish } from './da';
 import { french } from './fr';
 
@@ -19,8 +22,6 @@ export interface LanguageModule {
   name: string;
   /** BCP 47 locale for case-folding and text, e.g. "fr". */
   locale: string;
-  /** A few dictionary forms to try, shown on the home page before any lookup. */
-  examples: string[];
   /** The language's level-2 heading on en.wiktionary.org, e.g. "French". */
   heading: string;
   /** Extracts everything we support from that language's section of a page. */
@@ -30,7 +31,9 @@ export interface LanguageModule {
    * forms of a French past participle. If it throws, the parsed entry is
    * still shown, just without the extra data.
    */
-  enrich?(entry: LanguageEntry, fetchSection: SectionFetcher): Promise<LanguageEntry>;
+  enrich?(entry: LanguageEntry, fetchSection: SectionFetcher, fetchDocument: DocumentFetcher): Promise<LanguageEntry>;
+  /** Turns what was typed into a page title to look up, e.g. "25" -> "femogtyve". */
+  normalizeQuery?(query: string): string;
   /**
    * For a page that is an inflected form rather than a dictionary form,
    * the dictionary forms it belongs to, most likely first (e.g. "vais" ->

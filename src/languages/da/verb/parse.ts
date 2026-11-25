@@ -99,34 +99,34 @@ function headingText(section: Element): string {
   return first && /^H[1-6]$/.test(first.tagName) ? cleanText(first) : '';
 }
 
-export function parseDanishVerbTables(section: Element, pageTitle: string): InflectionTable[] {
-  const tables: InflectionTable[] = [];
-  const conjugations = Array.from(section.querySelectorAll('section')).filter((s) =>
-    /^Conjugation\b/.test(headingText(s)),
-  );
-
-  for (const conjugation of conjugations) {
-    const meta: Record<string, string> = {};
-    const inflections: Inflection[] = [];
-    for (const table of Array.from(conjugation.querySelectorAll('table.inflection-table'))) {
-      const header = cleanText(table.querySelector('tr')).toLowerCase();
-      if (header.includes('active')) inflections.push(...parseVoiceTable(table));
-      else if (header.includes('participle')) inflections.push(...parseParticipleTable(table, meta));
-    }
-    if (inflections.length === 0) continue;
-
-    const infinitive = inflections.find((i) => i.tags.includes('inf') && i.tags.includes('act'))?.forms[0];
-    const lemma = infinitive ?? pageTitle;
-    tables.push({
-      lang: 'da',
-      pos: 'verb',
-      lemma,
-      title: `Conjugation of ${lemma}`,
-      inflections,
-      periphrastic: [],
-      notes: [],
-      meta,
-    });
+/** The conjugation in one "Conjugation" section, or null if it has none. */
+export function parseDanishConjugation(conjugation: Element, pageTitle: string): InflectionTable | null {
+  const meta: Record<string, string> = {};
+  const inflections: Inflection[] = [];
+  for (const table of Array.from(conjugation.querySelectorAll('table.inflection-table'))) {
+    const header = cleanText(table.querySelector('tr')).toLowerCase();
+    if (header.includes('active')) inflections.push(...parseVoiceTable(table));
+    else if (header.includes('participle')) inflections.push(...parseParticipleTable(table, meta));
   }
-  return tables;
+  if (inflections.length === 0) return null;
+
+  const infinitive = inflections.find((i) => i.tags.includes('inf') && i.tags.includes('act'))?.forms[0];
+  const lemma = infinitive ?? pageTitle;
+  return {
+    lang: 'da',
+    pos: 'verb',
+    lemma,
+    title: `Conjugation of ${lemma}`,
+    inflections,
+    periphrastic: [],
+    notes: [],
+    meta,
+  };
+}
+
+export function parseDanishVerbTables(section: Element, pageTitle: string): InflectionTable[] {
+  return Array.from(section.querySelectorAll('section'))
+    .filter((s) => /^Conjugation\b/.test(headingText(s)))
+    .map((s) => parseDanishConjugation(s, pageTitle))
+    .filter((t): t is InflectionTable => t !== null);
 }

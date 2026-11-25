@@ -56,7 +56,6 @@ a {
 .label,
 .jump a,
 .col h3,
-.home h2,
 .search button {
   font-size: 12px;
   font-weight: 500;
@@ -277,36 +276,25 @@ main {
   cursor: pointer;
 }
 
-/* ---- home ---- */
+/* ---- home: links to the tables ---- */
 
-.home h2 {
-  margin: 8px 0 0;
-  padding-bottom: 6px;
-  border-bottom: 3px solid var(--text);
-  color: var(--accent);
+.tables {
+  display: flex;
+  flex-direction: column;
+  border-top: 3px solid var(--text);
 }
 
-.words {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.words li {
+.tables a {
+  padding: 14px 0;
   border-bottom: 1px solid var(--line);
-}
-
-.words button {
-  width: 100%;
-  min-height: 52px;
-  padding: 0;
-  border: 0;
-  background: none;
   font-size: 22px;
   font-weight: 500;
   letter-spacing: -0.01em;
-  text-align: left;
-  cursor: pointer;
+  text-decoration: none;
+}
+
+.tables a:hover {
+  color: var(--accent);
 }
 
 /* ---- conjugation ---- */
@@ -315,10 +303,27 @@ main {
   margin-top: 56px;
 }
 
-.lemma h1 {
-  margin: 0;
+/* headword, part of speech on the right, heavy rule underneath */
+.lemma {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0 12px;
   padding-bottom: 4px;
   border-bottom: 3px solid var(--text);
+}
+
+.lemma .pos {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.lemma h1 {
+  margin: 0;
   font-size: clamp(48px, 15vw, 72px);
   font-weight: 700;
   line-height: 1;
@@ -447,41 +452,81 @@ main {
   text-underline-offset: 4px;
 }
 
-/* Danish: basic forms, passive and participle in one grid
-   (label | forms), so the forms line up across sections */
-.dgrid {
+/* The shared inflection table (src/ui/FormTable.tsx): optional grey label
+   column, optional column headings, sections with small headings or light
+   rules. Column widths are set inline. */
+.ftable {
   display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
-  column-gap: 20px;
-  /* the basic forms sit right under the headword's rule */
+  column-gap: 16px;
   margin-top: 12px;
 }
 
-/* sections and rows place their cells directly in the grid */
-.dgrid-section,
-.dgrid-row {
-  display: contents;
+/* set apart from what is above it, e.g. the table of all numerals */
+.ftable-apart {
+  margin-top: 36px;
 }
 
-.dgrid h3 {
-  grid-column: 1 / -1;
-  margin: 24px 0 4px;
-  padding-top: 6px;
-  border-top: 1px solid var(--text);
+.ftable > span {
+  padding: 4px 0;
+  overflow-wrap: break-word;
+}
+
+.ftable-label {
+  color: var(--muted);
+}
+
+.ftable h3 {
+  margin: 0;
   font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
-.dgrid-row > span {
-  padding: 4px 0;
-  overflow-wrap: break-word;
+/* column headings: one cell each */
+.ftable-col {
+  padding-bottom: 6px;
+}
+
+/* section headings: across the table, under a full-width rule */
+.ftable .ftable-title {
+  grid-column: 1 / -1;
+  margin-top: 24px;
+  padding: 6px 0 4px;
+  border-top: 1px solid var(--text);
+}
+
+/* right under the column headings it needs no rule of its own */
+.ftable .ftable-title.first {
+  margin-top: 0;
+  padding-top: 2px;
+  border-top: 0;
+}
+
+/* full-width rules: light between groups, dark across the top */
+.ftable-rule {
+  grid-column: 1 / -1;
+  margin: 6px 0;
+  border-top: 1px solid var(--line);
+}
+
+.ftable-rule-strong {
+  margin: 0 0 6px;
+  border-top-color: var(--text);
+}
+
+.muted {
+  color: var(--muted);
 }
 
 /* break lines only between words, never inside allé(e)(s) */
 .word {
   white-space: nowrap;
+}
+
+/* words may break at a soft hyphen, e.g. the long ordinals of the numerals */
+.ftable-breakable .word {
+  white-space: normal;
 }
 
 .missing {
@@ -494,6 +539,11 @@ main {
   padding: 32px 16px calc(24px + env(safe-area-inset-bottom));
   color: var(--muted);
   font-size: 12px;
+}
+
+.credits p {
+  margin: 0 0 12px;
+  font-size: 14px;
 }
 
 .credits a {

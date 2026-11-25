@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { addRecent, readRecent, writeLastLanguage, type RecentItem } from './features/lookup/cache';
+import { writeLastLanguage } from './features/lookup/cache';
 import { navigate, useRoute } from './features/lookup/route';
 import { SearchBar } from './features/lookup/SearchBar';
 import { useLookup, type LookupState } from './features/lookup/useLookup';
 import { defaultLanguage, getLanguage, languages, type LanguageModule } from './languages/registry';
+import { homeViews } from './languages/homes';
 import { entryViews } from './languages/views';
 import { pageUrl } from './wiktionary/client';
 
@@ -11,24 +12,24 @@ export function App() {
   const route = useRoute();
   const language = getLanguage(route.lang) ?? defaultLanguage;
   const [attempt, setAttempt] = useState(0);
-  const state = useLookup(language, route.word, route.lemma, attempt);
-  const [recent, setRecent] = useState<RecentItem[]>(readRecent);
+  const home = homeViews[language.code];
+  // A page of the home page (#/da/@talord) rather than a word to look up.
+  const Page = home?.pages[route.word];
+  const state = useLookup(language, Page ? '' : route.word, route.lemma, attempt);
 
   const search = (word: string) => navigate({ lang: language.code, word });
   // Switching language looks the current word up again in the new language.
-  const switchLanguage = (code: string) => navigate({ lang: code, word: route.word });
+  const switchLanguage = (code: string) => navigate({ lang: code, word: Page ? '' : route.word });
 
   useEffect(() => writeLastLanguage(language.code), [language.code]);
 
   useEffect(() => {
-    document.title = route.word ? `${route.word} – Conjugaison` : 'Conjugaison';
-  }, [route.word]);
+    const word = Page ? '' : route.word;
+    document.title = word ? `${word} – Conjugaison` : 'Conjugaison';
+  }, [route.word, Page]);
 
   useEffect(() => {
-    if (state.status === 'ok') {
-      setRecent(addRecent({ lang: state.entry.lang, word: state.entry.title }));
-      window.scrollTo(0, 0);
-    }
+    if (state.status === 'ok') window.scrollTo(0, 0);
   }, [state]);
 
   const View = entryViews[language.code];
@@ -38,7 +39,7 @@ export function App() {
       <header className="topbar">
         <div className="topbar-inner">
           <SearchBar
-            value={route.word}
+            value={Page ? '' : route.word}
             inputLang={language.code}
             languages={languages}
             onSearch={search}
@@ -48,14 +49,7 @@ export function App() {
       </header>
 
       <main>
-        {state.status === 'idle' && (
-          <Home
-            recent={recent.filter((r) => r.lang === language.code)}
-            examples={language.examples}
-            lang={language.code}
-            onPick={search}
-          />
-        )}
+        {Page ? <Page /> : state.status === 'idle' && home && <home.Home />}
         {state.status === 'loading' && (
           <p className="status" role="status">
             Looking up <b>{state.query}</b>…
@@ -77,6 +71,13 @@ export function App() {
       </main>
 
       <footer className="credits">
+        {home && route.word && (
+          <p>
+            <a href={`#/${language.code}`}>
+              {home.link}
+            </a>
+          </p>
+        )}
         {state.status === 'ok' ? (
           <>
             From{' '}
@@ -98,34 +99,6 @@ export function App() {
         </a>
       </footer>
     </>
-  );
-}
-
-function Home({
-  recent,
-  examples,
-  lang,
-  onPick,
-}: {
-  recent: RecentItem[];
-  examples: string[];
-  lang: string;
-  onPick(word: string): void;
-}) {
-  const words = recent.length > 0 ? recent.map((r) => r.word) : examples;
-  return (
-    <section className="home">
-      <h2>{recent.length > 0 ? 'Recent' : 'Examples'}</h2>
-      <ul className="words">
-        {words.map((word) => (
-          <li key={word}>
-            <button type="button" lang={lang} onClick={() => onPick(word)}>
-              {word}
-            </button>
-          </li>
-        ))}
-      </ul>
-    </section>
   );
 }
 
@@ -173,8 +146,11 @@ function Problem({
     case 'no-inflection':
       return (
         <div className="status problem" role="alert">
-          <h2>No conjugation for “{state.query}”</h2>
-          <p>It has a {languageName} entry, but it is not a verb or a form of one.</p>
+          <h2>No table for “{state.query}”</h2>
+          <p>
+            It has a {languageName} entry, but Wiktionary lists no inflected forms for it, or for a word
+            it is a form of.
+          </p>
           <p>
             <a href={pageUrl(state.query)} target="_blank" rel="noreferrer">
               Open on Wiktionary

@@ -75,8 +75,13 @@ export function danishTablesWithMatch(tables: InflectionTable[], query: string |
   );
 }
 
-/** First table of the entry containing the form, else its first table. */
-export function danishMainTable(entry: LanguageEntry, query: string): InflectionTable | undefined {
+/**
+ * The tables that stand for an entry after a reverse lookup: every table
+ * containing the form (spiser is both the noun's plural and the verb's
+ * present), else the first table.
+ */
+export function danishMainTables(entry: LanguageEntry, query: string): InflectionTable[] {
   const hits = danishTablesWithMatch(entry.tables, query);
-  return entry.tables[hits.indexOf(true)] ?? entry.tables[0];
+  const matching = entry.tables.filter((_, i) => hits[i]);
+  return matching.length > 0 ? matching : entry.tables.slice(0, 1);
 }

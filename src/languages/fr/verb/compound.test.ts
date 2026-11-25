@@ -28,7 +28,7 @@ async function load(
     } catch {
       return null;
     }
-  });
+  }, async () => null);
   return { tables: entry.tables, fetched };
 }
 

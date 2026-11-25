@@ -1,4 +1,6 @@
 import { useMemo, type CSSProperties } from 'react';
+import { Words } from '../../../ui/FormTable';
+import { Headword } from '../../../ui/Headword';
 import { JumpNav } from '../../../ui/JumpNav';
 import type { InflectionTable } from '../../../core/types';
 import { layoutConjugation, matchesForm, type FormRow, type MoodBlock, type TenseBlock, type TensePair } from './layout';
@@ -53,21 +55,6 @@ const SHORT_NAMES: Record<string, string> = {
   participe: 'Part.',
 };
 
-/** Lets a line break between words but not inside one, e.g. allé(e)(s). */
-function Words({ text }: { text: string }) {
-  const words = text.split(' ');
-  return (
-    <>
-      {words.map((word, i) => (
-        <span key={i}>
-          {i > 0 && ' '}
-          <span className="word">{word}</span>
-        </span>
-      ))}
-    </>
-  );
-}
-
 /** One tense as its own column: name, then one line per person. */
 function Column({ tense, highlight }: { tense: TenseBlock; highlight?: string }) {
   return (
@@ -117,9 +104,7 @@ export function ConjugationView({ table, idPrefix, highlight }: Props) {
 
   return (
     <article className="conjugation">
-      <header className="lemma">
-        <h1 lang="fr">{c.lemma}</h1>
-      </header>
+      <Headword lemma={c.lemma} lang="fr" pos={table.pos} />
 
       <JumpNav
         lang="fr"

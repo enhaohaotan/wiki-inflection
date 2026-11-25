@@ -1,5 +1,5 @@
 import type { LanguageEntry } from '../../core/types';
-import type { LanguageModule, SectionFetcher } from '../../languages/registry';
+import type { DocumentFetcher, LanguageModule, SectionFetcher } from '../../languages/registry';
 import { fetchPageHtml, toPageTitle, WiktionaryError } from '../../wiktionary/client';
 import { findLanguageSection, listLanguages, parsePage } from '../../wiktionary/page';
 import { readCache, readForms, writeCache, writeForms } from './cache';
@@ -52,6 +52,10 @@ function sectionFetcher(language: LanguageModule, signal?: AbortSignal): Section
   return async (title) => (await loadPage(language, title, signal))?.section ?? null;
 }
 
+function documentFetcher(language: LanguageModule, signal?: AbortSignal): DocumentFetcher {
+  return async (title) => (await loadPage(language, title, signal))?.doc ?? null;
+}
+
 /** Titles to try, most literal first. Phone keyboards capitalise the first letter. */
 function candidates(query: string, locale: string): string[] {
   const title = toPageTitle(query);
@@ -72,7 +76,7 @@ async function finishEntry(
   let complete = true;
   if (language.enrich) {
     try {
-      entry = await language.enrich(entry, sectionFetcher(language, signal));
+      entry = await language.enrich(entry, sectionFetcher(language, signal), documentFetcher(language, signal));
     } catch (err) {
       if (signal?.aborted) throw err;
       // Show what we have; don't cache it, so the next lookup tries again.
@@ -133,6 +137,28 @@ async function viaLemmas(
 }
 
 /**
+ * Puts together what a page offers: its own entry when it has tables, and
+ * the entries of the words it is a form of. "små" is both an adjective of
+ * its own and the plural of "lille", so both are shown.
+ */
+function combine(
+  form: string,
+  own: LanguageEntry | null,
+  viaForms: LookupResult | null,
+  preferred: string | undefined,
+): LookupResult | null {
+  const others = viaForms?.status === 'ok' && viaForms.match ? viaForms.match.entries : [];
+  if (others.length === 0) return own ? { status: 'ok', entry: own } : null;
+
+  const entries = own ? [own, ...others.filter((e) => e.title !== own.title)] : others;
+  const shown =
+    (own && preferred === own.title ? own : undefined) ??
+    (preferred && viaForms?.status === 'ok' ? viaForms.entry : undefined) ??
+    entries[0]!;
+  return { status: 'ok', entry: shown, match: { form, entries } };
+}
+
+/**
  * Looks up `query`. If it is an inflected form ("vais"), shows the
  * dictionary form it belongs to ("aller") with `match` set; `preferredLemma`
  * picks among several ("suis" -> être or suivre).
@@ -153,18 +179,17 @@ export async function lookup(
   };
 
   try {
-    const titles = candidates(query, language.locale);
+    const titles = candidates(language.normalizeQuery?.(query) ?? query, language.locale);
 
     for (const title of titles) {
       const cached = readCache(language.code, title);
-      if (cached) return { status: 'ok', entry: cached };
       const forms = readForms(language.code, title);
       if (forms) {
-        const result = await viaLemmas(language, title, forms, preferredLemma, signal);
-        if (result?.status === 'ok' && result.match) {
-          writeForms(language.code, title, result.match.entries.map((e) => e.title));
-          return result;
-        }
+        const viaForms = await viaLemmas(language, title, forms, preferredLemma, signal);
+        const result = combine(title, cached, viaForms, preferredLemma);
+        if (result) return result;
+      } else if (cached) {
+        return { status: 'ok', entry: cached };
       }
     }
 
@@ -176,19 +201,17 @@ export async function lookup(
         continue;
       }
 
-      const entry = await finishEntry(language, title, page.section, signal);
-      if (entry) return { status: 'ok', entry };
-
-      // Not a dictionary form with a table: maybe an inflected form of one.
-      const lemmas = language.lemmasOf?.(page.section, title) ?? [];
-      if (lemmas.length > 0) {
-        const result = await viaLemmas(language, title, lemmas, preferredLemma, signal);
-        if (result?.status === 'ok' && result.match) {
-          // Remember only the lemmas that had a table, so dead ends aren't fetched again.
-          writeForms(language.code, title, result.match.entries.map((e) => e.title));
-          return result;
-        }
+      const own = await finishEntry(language, title, page.section, signal);
+      // Also an inflected form of other words? (vais -> aller; små -> lille)
+      const lemmas = (language.lemmasOf?.(page.section, title) ?? []).filter((l) => l !== title);
+      const viaForms = lemmas.length > 0 ? await viaLemmas(language, title, lemmas, preferredLemma, signal) : null;
+      if (viaForms?.status === 'ok' && viaForms.match) {
+        // Remember only the lemmas that had a table, so dead ends aren't fetched again.
+        writeForms(language.code, title, viaForms.match.entries.map((e) => e.title));
       }
+
+      const result = combine(title, own, viaForms, preferredLemma);
+      if (result) return result;
       miss({ status: 'no-inflection', query: title });
     }
     return fallback;

@@ -19,7 +19,6 @@ export const french: LanguageModule = {
   name: 'French',
   locale: 'fr',
   heading: 'French',
-  examples: ['aller', 'être', 'avoir', 'faire', 'prendre', 'finir'],
   parse(section, pageTitle) {
     const tables = parseFrenchVerbTables(section, pageTitle);
     // A page can hold several conjugations (asseoir / s'asseoir): show the one asked for first.
