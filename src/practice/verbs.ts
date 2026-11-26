@@ -47,20 +47,21 @@ export const PRACTICE_VERBS: readonly string[] = [
 ];
 
 /**
- * Shown first on the home page, numbered, in the order a learner needs them:
- * the auxiliaries; aller and faire; the modal verbs with falloir (il faut,
- * standing for the impersonal verbs) and savoir; the other irregular verbs
- * used all the time; a model of each group (parler, finir, rendre); a
- * pronominal verb (s'appeler); and croire. The passive is être and a past
- * participle, so être stands for it.
+ * Shown first on the home page, numbered: the auxiliaries; a model of each
+ * group (parler, finir, rendre); the irregular verbs used most (aller,
+ * faire, venir, prendre); the modal verbs with falloir (il faut, standing
+ * for the impersonal verbs) and savoir; the other irregular verbs used all
+ * the time; then a pronominal verb (s'appeler), as pronominal conjugation
+ * is learnt after the rest. The passive is être and a past participle, so
+ * être stands for it.
  */
 export const KEY_VERBS: readonly string[] = [
   'être', 'avoir',
-  'aller', 'faire',
-  'pouvoir', 'vouloir', 'devoir', 'falloir', 'savoir',
-  'dire', 'voir', 'prendre', 'venir', 'mettre', 'partir',
   'parler', 'finir', 'rendre',
-  "s'appeler", 'croire',
+  'aller', 'faire', 'venir', 'prendre',
+  'pouvoir', 'vouloir', 'devoir', 'falloir', 'savoir',
+  'dire', 'voir', 'mettre', 'partir', 'croire',
+  "s'appeler",
 ];
 
 /**
