@@ -3,7 +3,6 @@ import { SearchBar } from '../features/lookup/SearchBar';
 import { Headword } from '../ui/Headword';
 import { JumpNav } from '../ui/JumpNav';
 import { pageUrl } from '../wiktionary/client';
-import { ownSheet } from './ownTables';
 import { practiceLookup, type PracticeResult } from './practiceLookup';
 import { plainVerb } from './pronominal';
 import { savedTable } from './savedTables';
@@ -74,14 +73,15 @@ const SHORT_NAMES: Record<string, string> = {
 export function PracticePage() {
   const word = useHashWord();
   const [attempt, setAttempt] = useState(0);
-  // Verbs on the practice list come with the page and work offline; s'aimer
-  // and être aimé are not on Wiktionary, so their tables are kept here.
-  // Any other verb is looked up on Wiktionary.
-  const own = useMemo(() => ownSheet(word), [word]);
-  const saved = useMemo(() => (own ? undefined : savedTable(word)), [own, word]);
-  const state = usePracticeLookup(own || saved ? '' : word, attempt);
+  // Verbs on the practice list come with the page and work offline; any
+  // other verb is looked up on Wiktionary.
+  const saved = useMemo(() => savedTable(word), [word]);
+  const state = usePracticeLookup(saved ? '' : word, attempt);
   const table = saved ?? (state.status === 'ok' ? state.table : undefined);
-  const sheet = useMemo(() => own ?? (table ? buildSheet(table) : undefined), [own, table]);
+  const sheet = useMemo(() => (table ? buildSheet(table) : undefined), [table]);
+  // The Wiktionary page the table comes from. A pronominal verb is credited
+  // to its plain verb (se lever -> lever), whose page its table is built from.
+  const source = saved ? plainVerb(saved.lemma) : state.status === 'ok' ? state.page : undefined;
 
   useEffect(() => {
     document.title = word ? `${word} – Conjugation Practice` : 'Conjugation Practice';
@@ -128,21 +128,11 @@ export function PracticePage() {
       </main>
 
       <footer className="credits">
-        {own ? (
-          <>“{own.lemma}” is not on Wiktionary; its table is kept in this project. Other verbs: Wiktionary, </>
-        ) : saved ? (
+        {source ? (
           <>
             From{' '}
-            <a href={pageUrl(plainVerb(saved.lemma))} target="_blank" rel="noreferrer">
-              “{saved.lemma}”
-            </a>{' '}
-            on Wiktionary (saved with the page),{' '}
-          </>
-        ) : state.status === 'ok' ? (
-          <>
-            From{' '}
-            <a href={pageUrl(state.page)} target="_blank" rel="noreferrer">
-              “{state.page}”
+            <a href={pageUrl(source)} target="_blank" rel="noreferrer">
+              “{source}”
             </a>{' '}
             on Wiktionary,{' '}
           </>
@@ -206,10 +196,10 @@ function Drill({ sheet }: { sheet: Sheet }) {
   };
 
   // Enter moves on to the next blank.
-  const next = (e: KeyboardEvent<HTMLInputElement>) => {
+  const next = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key !== 'Enter') return;
     e.preventDefault();
-    const inputs = Array.from(root.current?.querySelectorAll<HTMLInputElement>('input.blank') ?? []);
+    const inputs = Array.from(root.current?.querySelectorAll<HTMLTextAreaElement>('.blank') ?? []);
     inputs[inputs.indexOf(e.currentTarget) + 1]?.focus();
   };
 
@@ -218,7 +208,7 @@ function Drill({ sheet }: { sheet: Sheet }) {
 
   return (
     <article className="conjugation drill" ref={root}>
-      <Headword lemma={sheet.lemma} lang="fr" pos={sheet.pos} label={sheet.posLabel} />
+      <Headword lemma={sheet.lemma} lang="fr" pos={sheet.pos} />
       <JumpNav
         lang="fr"
         targets={sheet.sections.map((s) => ({ id: `p-${s.id}`, name: s.fr, short: SHORT_NAMES[s.id] ?? s.fr }))}
@@ -281,7 +271,7 @@ function ExerciseBlock({
   results: Record<string, boolean>;
   showAnswers: boolean;
   onChange(id: string, value: string): void;
-  onKeyDown(e: KeyboardEvent<HTMLInputElement>): void;
+  onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>): void;
 }) {
   // Compound and literary tenses start folded. Answers typed in a folded tense are kept.
   const [open, setOpen] = useState(!exercise.folded);
@@ -331,7 +321,7 @@ function BlankRow({
   result: boolean | undefined;
   showAnswer: boolean;
   onChange(id: string, value: string): void;
-  onKeyDown(e: KeyboardEvent<HTMLInputElement>): void;
+  onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>): void;
 }) {
   const state = result === undefined ? '' : result ? ' right' : ' wrong';
   const answer = blank.forms.join(' / ');
@@ -345,12 +335,17 @@ function BlankRow({
       ) : (
         <span className="drill-field">
           <span className={`blank-wrap${state}`}>
-            <input
+            {/* A one-line text area rather than an input: iOS offers to fill
+                in a contact ("AutoFill Contact") on a column of inputs,
+                whatever autoComplete says, but not on a text area. */}
+            <textarea
               className="blank"
-              type="text"
+              rows={1}
+              wrap="off"
               lang="fr"
               value={value}
-              onChange={(e) => onChange(blank.id, e.target.value)}
+              // A pasted line break would make it two lines.
+              onChange={(e) => onChange(blank.id, e.target.value.replace(/[\r\n]+/g, ' '))}
               onKeyDown={onKeyDown}
               aria-label={`${tense}, ${blank.label}`}
               aria-invalid={result === false || undefined}

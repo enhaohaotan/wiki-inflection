@@ -30,14 +30,12 @@ const server = await createServer({
 try {
   const { practiceLookup } = await server.ssrLoadModule('/src/practice/practiceLookup.ts');
   const { PRACTICE_VERBS } = await server.ssrLoadModule('/src/practice/verbs.ts');
-  const { OWN_LEMMAS } = await server.ssrLoadModule('/src/practice/ownTables.ts');
   const { lacksAgreement, storeTable } = await server.ssrLoadModule('/src/practice/savedTables.ts');
 
   const previous = existsSync(OUT) && !all ? JSON.parse(readFileSync(OUT, 'utf8')) : { tables: {}, missing: {} };
   const tables = { ...previous.tables };
   const missing = {};
-  // s'aimer and être aimé are not on Wiktionary; their tables are in ownTables.ts.
-  const verbs = PRACTICE_VERBS.filter((v) => !OWN_LEMMAS.includes(v));
+  const verbs = PRACTICE_VERBS;
   // Also again any verb saved as another verb's table (se coucher saved as
   // coucher), or saved without its agreed participles.
   const todo = verbs.filter((v) => tables[v]?.lemma !== v || lacksAgreement(tables[v]));

@@ -42,8 +42,6 @@ export interface SheetSection {
 export interface Sheet {
   lemma: string;
   pos: string;
-  /** Shown beside the headword instead of the part of speech, e.g. "voix passive". */
-  posLabel?: string;
   sections: SheetSection[];
 }
 
