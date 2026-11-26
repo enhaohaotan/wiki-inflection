@@ -1,20 +1,27 @@
+import * as de from './de/verbs';
+import * as es from './es/verbs';
+import * as it from './it/verbs';
 import type { PracticeLanguage } from './types';
 
-type Upcoming = Pick<PracticeLanguage, 'code' | 'name' | 'ownName' | 'placeholder' | 'flag'>;
+type Upcoming = Pick<PracticeLanguage, 'code' | 'name' | 'ownName' | 'placeholder' | 'flag'> & {
+  verbs: { PRACTICE_VERBS: readonly string[]; KEY_VERBS: readonly string[] };
+};
 
 /**
- * A language listed in the picker before it can be practised: no verbs, no
- * tables, and the page stays empty. Replace it with a folder like ./fr once
- * there is a list of verbs and a way to turn its tables into exercises.
+ * A language listed before it can be practised: its home page shows its
+ * verb list, but there are no tables yet and its other pages stay empty.
+ * Replace it with a full PracticeLanguage, like ./fr, once its Wiktionary
+ * conjugation tables can be parsed and turned into exercises.
  */
-function upcoming(language: Upcoming): PracticeLanguage {
+function upcoming({ verbs, ...language }: Upcoming): PracticeLanguage {
   return {
     ...language,
     locale: language.code,
-    verbs: [],
-    keyVerbs: [],
+    ready: false,
+    verbs: verbs.PRACTICE_VERBS,
+    keyVerbs: verbs.KEY_VERBS,
     savedTable: () => undefined,
-    // Never called: the page looks nothing up for a language without verbs.
+    // Never called: the page looks nothing up for a language not ready yet.
     lookup: async (verb) => ({ status: 'not-found', query: verb }),
     buildSheet: (table) => ({ lemma: table.lemma, pos: '', sections: [] }),
     sourcePage: (table) => table.lemma,
@@ -26,6 +33,7 @@ function upcoming(language: Upcoming): PracticeLanguage {
 
 export const germanPractice = upcoming({
   code: 'de',
+  verbs: de,
   name: 'German',
   ownName: 'Deutsch',
   placeholder: 'Verb',
@@ -34,6 +42,7 @@ export const germanPractice = upcoming({
 
 export const spanishPractice = upcoming({
   code: 'es',
+  verbs: es,
   name: 'Spanish',
   ownName: 'Español',
   placeholder: 'verbo',
@@ -43,6 +52,7 @@ export const spanishPractice = upcoming({
 
 export const italianPractice = upcoming({
   code: 'it',
+  verbs: it,
   name: 'Italian',
   ownName: 'Italiano',
   placeholder: 'verbo',

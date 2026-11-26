@@ -55,8 +55,8 @@ export function PracticePage() {
   // Verbs on the practice list come with the page and work offline; any
   // other verb is looked up on Wiktionary.
   const saved = useMemo(() => language.savedTable(word), [language, word]);
-  // A language without verbs is not ready yet: its pages stay empty.
-  const ready = language.verbs.length > 0;
+  // A language not ready yet only lists its verbs; its other pages stay empty.
+  const { ready } = language;
   const state = usePracticeLookup(language, saved || !ready ? '' : word, attempt);
   const table = saved ?? (state.status === 'ok' ? state.table : undefined);
   const sheet = useMemo(() => (table ? language.buildSheet(table) : undefined), [language, table]);
@@ -109,7 +109,7 @@ export function PracticePage() {
       </header>
 
       <main>
-        {!word && ready && <Home language={language} />}
+        {!word && <Home language={language} />}
         {state.status === 'loading' && (
           <p className="status" role="status">
             Looking up <b>{state.query}</b>…
@@ -150,14 +150,20 @@ function stripes(colors: readonly string[]): string {
 
 function Home({ language }: { language: PracticeLanguage }) {
   const { keyVerbs, verbs } = language;
+  const Item = language.ready ? 'a' : 'span';
   return (
     <nav className="verb-list" aria-label="Verbs to practise" lang={language.code}>
       {/* Numbered: the key verbs first, set off by a heavy rule, then the rest in dictionary order. */}
       {[...keyVerbs, ...verbs.filter((v) => !keyVerbs.includes(v))].map((verb, i) => (
-        <a key={verb} href={verbHref(language, verb)} className={i === keyVerbs.length - 1 ? 'last-key' : undefined}>
+        // A language not ready yet lists its verbs as plain text: there is nothing to open.
+        <Item
+          key={verb}
+          href={language.ready ? verbHref(language, verb) : undefined}
+          className={i === keyVerbs.length - 1 ? 'last-key' : undefined}
+        >
           <span className="num">{String(i + 1).padStart(3, '0')}</span>
           {verb}
-        </a>
+        </Item>
       ))}
     </nav>
   );

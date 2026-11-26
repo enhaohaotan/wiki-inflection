@@ -29,6 +29,7 @@ export const frenchPractice: PracticeLanguage = {
   placeholder: 'verbe',
   flag: ['#000091', '#ffffff', '#e1000f'],
   locale: 'fr',
+  ready: true,
   verbs: PRACTICE_VERBS,
   keyVerbs: KEY_VERBS,
   savedTable: savedTables(saved, 'fr', 'fr'),

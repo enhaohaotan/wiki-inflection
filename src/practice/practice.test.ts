@@ -44,7 +44,7 @@ describe('every practice language', () => {
         expect(language.keyVerbs.filter((v) => !language.verbs.includes(v))).toEqual([]);
       });
 
-      it('has a saved, complete table for every verb on its list', () => {
+      it.skipIf(!language.ready)('has a saved, complete table for every verb on its list', () => {
         const missing = language.verbs.filter((v) => !language.savedTable(v));
         expect(missing).toEqual([]);
         const incomplete = language.verbs.filter((v) => {
@@ -54,7 +54,7 @@ describe('every practice language', () => {
         expect(incomplete).toEqual([]);
       });
 
-      it.skipIf(language.verbs.length === 0)('can always pick a different verb at random', () => {
+      it('can always pick a different verb at random', () => {
         const [first] = language.verbs;
         expect(randomVerb(language.verbs, first, () => 0.5)).not.toBe(first);
       });

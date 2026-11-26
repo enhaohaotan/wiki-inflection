@@ -6,7 +6,7 @@ import { germanPractice, italianPractice, spanishPractice } from './upcoming';
  * The languages that can be practised, in the order of the language picker.
  * To add one, add a folder like ./fr that exports a PracticeLanguage, list it
  * here, and fetch its tables with `npm run verbs:fetch -- <code>`. Languages
- * not ready yet are in ./upcoming.ts: listed, but their pages stay empty.
+ * not ready yet are in ./upcoming.ts: their verbs are listed, but cannot be practised.
  */
 export const PRACTICE_LANGUAGES: readonly PracticeLanguage[] = [
   frenchPractice,

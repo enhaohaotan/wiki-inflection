@@ -253,7 +253,8 @@
   border-top: 3px solid var(--text);
 }
 
-.verb-list a {
+/* a link, or plain text for a language not ready yet */
+.verb-list > * {
   padding: 7px 0;
   border-bottom: 1px solid var(--line);
   font-size: 16px;
@@ -270,7 +271,7 @@
 }
 
 /* the key verbs end here */
-.verb-list a.last-key {
+.verb-list > .last-key {
   border-bottom: 3px solid var(--text);
 }
 
