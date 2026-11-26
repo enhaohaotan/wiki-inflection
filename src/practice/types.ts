@@ -76,8 +76,8 @@ export interface PracticeLanguage {
   /** BCP 47 locale for case folding, e.g. "fr". */
   locale: string;
   /**
-   * Whether the language can be practised. A language not ready yet (see
-   * upcoming.ts) only lists its verbs on the home page; its pages stay empty.
+   * Whether the language can be practised. A language not ready yet only
+   * lists its verbs on the home page; its other pages stay empty.
    */
   ready: boolean;
   /** The verbs on the practice list, in dictionary order; their tables are saved with the page. */

@@ -1,7 +1,6 @@
 /**
- * The German verbs to practise. For now they are only listed on the home
- * page (../upcoming.ts): German cannot be practised until its Wiktionary
- * conjugation tables can be parsed.
+ * The verbs the Random button picks from, and the ones whose tables are saved
+ * with the page for offline practice (see scripts/fetch-verb-tables.mjs).
  *
  * 200 core verbs of everyday German, for practising conjugation. Chosen by
  * judgement, then checked against how often their forms come up in film
