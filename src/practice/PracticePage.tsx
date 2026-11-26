@@ -239,9 +239,6 @@ function Drill({ sheet }: { sheet: Sheet }) {
         <p className="drill-score" role="status">
           {checked && (marked.length === 0 ? 'Nothing filled in to check' : `${right} of ${marked.length} right`)}
         </p>
-        <button type="button" onClick={check}>
-          Check
-        </button>
         {/* Both labels take up space, so the button keeps one width and Check stays put. */}
         <button
           type="button"
@@ -252,6 +249,9 @@ function Drill({ sheet }: { sheet: Sheet }) {
         >
           <span className={showAnswers ? 'hidden' : undefined}>Show answers</span>
           <span className={showAnswers ? undefined : 'hidden'}>Hide answers</span>
+        </button>
+        <button type="button" className="primary" onClick={check}>
+          Check
         </button>
       </div>
     </article>

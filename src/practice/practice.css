@@ -225,7 +225,7 @@
   visibility: hidden;
 }
 
-.drill-actions button:first-of-type {
+.drill-actions button.primary {
   background: var(--text);
   color: var(--bg);
 }

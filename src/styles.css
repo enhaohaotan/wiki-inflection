@@ -182,7 +182,7 @@ a {
   border-radius: 0;
   background: transparent;
   /* 16px or more keeps iOS from zooming the page on focus */
-  font-size: 18px;
+  font-size: 16px;
   -webkit-appearance: none;
   appearance: none;
 }
@@ -327,7 +327,7 @@ main {
 
 .lemma h1 {
   margin: 0;
-  font-size: clamp(48px, 15vw, 72px);
+  font-size: clamp(40px, 12vw, 56px);
   font-weight: 700;
   line-height: 1;
   letter-spacing: -0.045em;
@@ -368,12 +368,15 @@ main {
 .mood {
   /* clear the sticky top bar and mood links when jumped to */
   scroll-margin-top: calc(var(--topbar-h) + env(safe-area-inset-top) + 44px);
-  margin-top: 44px;
+  /* 20px under the mood links; 24 + 20 = 44px between two moods (padding,
+     so it adds up instead of collapsing into the next mood's margin) */
+  margin-top: 20px;
+  padding-bottom: 24px;
 }
 
 .mood > h2 {
   margin: 0;
-  font-size: 32px;
+  font-size: 28px;
   font-weight: 700;
   line-height: 1.05;
   letter-spacing: -0.03em;
