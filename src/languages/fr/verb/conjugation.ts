@@ -1,111 +1,136 @@
 import type { InflectionTable } from '../../../core/types';
-import type { ConjugationLayout, ConjugationMood, ConjugationRow } from '../../conjugation';
-import { layoutConjugation, pronounFor, type TenseBlock } from './layout';
+import { layOut, type ConjugationLayout, type Language } from '../../conjugation';
+import { PERSONS } from '../../verbTables';
+import { auxiliariesInRule, type AuxiliaryUse, type AuxTense } from './auxiliaries';
 import { expandForm } from './notation';
+import { compoundForm, participleOf, pronounFor, slotOf, type Num, type ParticipleForms, type Person } from './words';
 
 /**
- * A French conjugation in the layout shared by every language, built from
- * the conjugation viewer's own layout, so that what the practice page asks
- * is exactly what the viewer shows.
+ * French, described for the shared engine (../../conjugation.ts): its moods
+ * and tenses, and how a compound form is spelled (./words.ts). The simple
+ * tenses come from the table; a compound tense is the auxiliary Wiktionary's
+ * rule for it names (avoir, être, or both) and the past participle, which
+ * agrees after être (suis allé(e)). Answers are written in the viewer's
+ * notation (allé(e)(s), dissous / dissoute), spelled out for checking.
  */
 
-type Person = '1' | '2' | '3';
-type Num = 's' | 'p';
-type Kind = 'plain' | 'subjunctive' | 'imperative';
+/** A compound tense: Wiktionary's rule for it, which names the auxiliary, and the auxiliary's tense. */
+interface Build {
+  rule: string;
+  auxTense: AuxTense;
+}
 
-/** Short names in the bar of section links. */
-const SHORT_NAMES: Record<string, string> = {
-  indicatif: 'Ind.',
-  conditionnel: 'Cond.',
-  subjonctif: 'Subj.',
-  imperatif: 'Impér.',
-  participe: 'Part.',
-};
+interface Verb {
+  table: InflectionTable;
+  participle: ParticipleForms | null;
+}
 
-/** Same order as the rows of the viewer's layout. */
-const ALL_PERSONS: [Person, Num][] = [
-  ['1', 's'],
-  ['2', 's'],
-  ['3', 's'],
-  ['1', 'p'],
-  ['2', 'p'],
-  ['3', 'p'],
-];
-const IMPERATIVE_PERSONS: [Person, Num][] = [
+const IMPERATIVE_PERSONS = [
   ['2', 's'],
   ['1', 'p'],
   ['2', 'p'],
-];
+] as const;
 
-const KINDS: Record<string, Kind> = { subjonctif: 'subjunctive', imperatif: 'imperative' };
-
-/** Tenses of written narrative only: passé simple, passé antérieur, imperfect and pluperfect subjunctive. */
-const LITERARY: Record<string, string[]> = {
-  indicatif: ['Passé simple', 'Passé antérieur'],
-  subjonctif: ['Imparfait', 'Plus-que-parfait'],
-};
-
-/** Whether a tense starts folded. */
-export function startsFolded(moodId: string, tense: string, compound: boolean): boolean {
-  return compound || (LITERARY[moodId]?.includes(tense) ?? false);
+/** A simple tense and the compound tense built on it. */
+function pair(simple: string, tags: AuxTense, compound: string, rule: string, folded = false) {
+  return [
+    { name: simple, tags: [tags], folded },
+    { name: compound, build: { rule, auxTense: tags }, on: tags },
+  ];
 }
 
-function rowsOf(tense: TenseBlock, persons: [Person, Num][], kind: Kind): ConjugationRow[] {
-  return tense.rows.map((row, i) => {
-    const [person, num] = persons[i]!;
-    return {
-      // Elided as written before the answer (j’ai, que j’aille); the plain pronoun where there is no form.
-      label: row.forms.length > 0 ? row.pronoun : pronounFor(person, num, kind, undefined),
-      shown: row.forms,
-      accepted: [...new Set(row.forms.flatMap(expandForm))],
-    };
-  });
-}
+/**
+ * Folded at first, besides the compound tenses: the tenses of written
+ * narrative only (passé simple; imperfect subjunctive).
+ */
+export const FRENCH: Language<Verb, Build, AuxiliaryUse> = {
+  moods: [
+    {
+      id: 'indicatif',
+      name: 'Indicatif',
+      short: 'Ind.',
+      kind: 'plain',
+      persons: PERSONS,
+      pairs: [
+        pair('Présent', 'pres|indc', 'Passé composé', 'indicative:present perfect'),
+        pair('Imparfait', 'impf|indc', 'Plus-que-parfait', 'indicative:pluperfect'),
+        pair('Passé simple', 'phis', 'Passé antérieur', 'indicative:past anterior', true),
+        pair('Futur simple', 'futr', 'Futur antérieur', 'indicative:future perfect'),
+      ],
+    },
+    {
+      id: 'conditionnel',
+      name: 'Conditionnel',
+      short: 'Cond.',
+      kind: 'plain',
+      persons: PERSONS,
+      pairs: [pair('Présent', 'cond', 'Passé', 'indicative:conditional perfect')],
+    },
+    {
+      id: 'subjonctif',
+      name: 'Subjonctif',
+      short: 'Subj.',
+      kind: 'subjunctive',
+      persons: PERSONS,
+      pairs: [
+        pair('Présent', 'pres|subj', 'Passé', 'subjunctive:past'),
+        pair('Imparfait', 'impf|subj', 'Plus-que-parfait', 'subjunctive:pluperfect', true),
+      ],
+    },
+    {
+      id: 'imperatif',
+      name: 'Impératif',
+      short: 'Impér.',
+      kind: 'imperative',
+      persons: IMPERATIVE_PERSONS,
+      pairs: [pair('Présent', 'impr', 'Passé', 'imperative:compound')],
+    },
+  ],
 
-export function conjugationLayout(table: InflectionTable): ConjugationLayout {
-  const c = layoutConjugation(table);
-  const moods: ConjugationMood[] = c.moods.map((mood) => {
-    const kind = KINDS[mood.id] ?? 'plain';
-    const persons = kind === 'imperative' ? IMPERATIVE_PERSONS : ALL_PERSONS;
-    return {
-      id: mood.id,
-      name: mood.fr,
-      short: SHORT_NAMES[mood.id] ?? mood.fr,
-      pairs: mood.pairs.map((pair) =>
-        [pair.simple, pair.compound]
-          .filter((t): t is TenseBlock => t !== undefined)
-          .map((t) => ({
-            name: t.fr,
-            compound: t.compound,
-            folded: startsFolded(mood.id, t.fr, t.compound),
-            rows: rowsOf(t, persons, kind),
-          })),
-      ),
-    };
-  });
-
-  if (c.participles.length > 0) {
-    moods.push({
+  forms: [
+    {
       id: 'participe',
       name: 'Participe',
-      short: SHORT_NAMES.participe!,
-      pairs: [
-        [
-          {
-            name: 'Participe',
-            compound: false,
-            folded: false,
-            rows: c.participles.map((p) => ({
-              label: p.fr.toLowerCase(),
-              shown: p.forms,
-              // The agreed forms (allée, allés, allées) are right too.
-              accepted: [...new Set([...p.forms, ...p.agreed].flatMap(expandForm))],
-            })),
-          },
-        ],
-      ],
-    });
-  }
+      short: 'Part.',
+      tense: 'Participe',
+      rows({ table }) {
+        // The infinitive is the headword itself, so only the participles are asked.
+        return [
+          ['ppr', 'présent'],
+          ['pp', 'passé'],
+        ].flatMap(([tag, label]) => {
+          const slot = slotOf(table, [tag!]);
+          if (!slot) return [];
+          // The agreed forms (allée, allés, allées) are right too.
+          const agreed =
+            tag === 'pp' ? table.inflections.filter((i) => i.tags[0] === 'pp' && i.tags.length === 3).flatMap((i) => i.forms) : [];
+          return [{ label: label!, shown: slot.forms, accepted: [...new Set([...slot.forms, ...agreed].flatMap(expandForm))] }];
+        });
+      },
+    },
+  ],
 
-  return { lemma: c.lemma, pos: table.pos, moods };
+  // Elided as written before the form (j’ai, que j’aille).
+  subject: ([person, num], kind, form) => pronounFor(person as Person, num as Num, kind, form),
+
+  verb: (table) => ({ table, participle: participleOf(table) }),
+
+  auxiliaries({ table, participle }, build, kind) {
+    const rule = table.periphrastic.find((p) => p.key === build.rule);
+    if (!rule || !participle) return { shown: [], also: [] };
+    const uses = auxiliariesInRule(rule.rule);
+    // A compound imperative of a pronominal verb is not used.
+    return { shown: kind === 'imperative' ? uses.filter((u) => !u.reflexive) : uses, also: [] };
+  },
+
+  build({ participle }, build, use, [person, num]) {
+    const form = compoundForm(use, build.auxTense, person as Person, num as Num, participle!);
+    return form ? { shown: [form], accepted: expandForm(form) } : { shown: [], accepted: [] };
+  },
+
+  accepts: expandForm,
+};
+
+export function conjugationLayout(table: InflectionTable): ConjugationLayout {
+  return layOut(FRENCH, table);
 }

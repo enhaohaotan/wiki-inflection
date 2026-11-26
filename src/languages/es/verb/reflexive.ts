@@ -17,7 +17,7 @@ export function plainVerb(verb: string): string {
   return isReflexive(verb) ? verb.slice(0, -2) : verb;
 }
 
-const REFLEXIVE_PRONOUNS: Record<string, string> = { '1s': 'me', '2s': 'te', '3s': 'se', '1p': 'nos', '2p': 'os', '3p': 'se' };
+export const REFLEXIVE_PRONOUNS: Record<string, string> = { '1s': 'me', '2s': 'te', '3s': 'se', '1p': 'nos', '2p': 'os', '3p': 'se' };
 
 const ACCENTED: Record<string, string> = { a: 'á', e: 'é', i: 'í', o: 'ó', u: 'ú' };
 const STRONG = /[aeoáéó]/;

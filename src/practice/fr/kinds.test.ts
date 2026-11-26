@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { french } from '../../languages/fr';
-import { startsFolded } from '../../languages/fr/verb/conjugation';
+import { conjugationLayout } from '../../languages/fr/verb/conjugation';
 import { findLanguageSection, parsePage } from '../../wiktionary/page';
 import { randomVerb } from '../random';
 import { kindOf } from './kinds';
@@ -48,13 +48,18 @@ describe('KEY_VERBS', () => {
   });
 });
 
-describe('startsFolded', () => {
+describe('folding', () => {
   it('folds compound and literary tenses', () => {
-    expect(startsFolded('indicatif', 'Présent', false)).toBe(false);
-    expect(startsFolded('indicatif', 'Passé composé', true)).toBe(true);
-    expect(startsFolded('indicatif', 'Passé simple', false)).toBe(true);
-    expect(startsFolded('subjonctif', 'Imparfait', false)).toBe(true);
-    expect(startsFolded('indicatif', 'Imparfait', false)).toBe(false);
-    expect(startsFolded('subjonctif', 'Présent', false)).toBe(false);
+    const folded = Object.fromEntries(
+      conjugationLayout(table('aller')).moods.flatMap((mood) =>
+        mood.pairs.flat().map((tense) => [`${mood.id}/${tense.name}`, tense.folded]),
+      ),
+    );
+    expect(folded['indicatif/Présent']).toBe(false);
+    expect(folded['indicatif/Passé composé']).toBe(true);
+    expect(folded['indicatif/Passé simple']).toBe(true);
+    expect(folded['subjonctif/Imparfait']).toBe(true);
+    expect(folded['indicatif/Imparfait']).toBe(false);
+    expect(folded['subjonctif/Présent']).toBe(false);
   });
 });

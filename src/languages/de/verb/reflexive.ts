@@ -32,8 +32,6 @@ export function withPronoun(form: string, pronoun: string): string {
 }
 
 function pronounFor(tags: string[]): string | undefined {
-  if (tags.join('|') === 's|imp') return REFLEXIVE_PRONOUNS['2s'];
-  if (tags.join('|') === 'p|imp') return REFLEXIVE_PRONOUNS['2p'];
   return /^[123]$/.test(tags[0] ?? '') ? REFLEXIVE_PRONOUNS[`${tags[0]}${tags[1]}`] : undefined;
 }
 

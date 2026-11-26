@@ -1,17 +1,15 @@
 import type { InflectionTable } from '../../../core/types';
-import { formsMood, formsOf, moodOf, type ConjugationLayout, type MoodSpec, type TenseSpec } from '../../conjugation';
+import { formsOf, layOut, type ConjugationLayout, type Language } from '../../conjugation';
 import { PERSONS, type Person } from '../../verbTables';
-import { isReflexive } from './reflexive';
+import { isReflexive, REFLEXIVE_PRONOUNS } from './reflexive';
 
 /**
- * A Spanish conjugation in the shared layout (../../conjugation.ts). The
- * simple tenses come from the table; the compound tenses, which Wiktionary
- * leaves out, are built here from haber and the past participle (he hablado),
- * with the reflexive pronoun first for a reflexive verb (me he llamado).
+ * Spanish, described for the shared engine (../../conjugation.ts): its
+ * moods and tenses, and how a compound form is spelled. The simple tenses
+ * come from the table; the compound tenses, which Wiktionary leaves out,
+ * are haber and the past participle (he hablado), with the reflexive
+ * pronoun first for a reflexive verb (me he llamado).
  */
-
-/** tú, usted, nosotros, vosotros, ustedes: the formal ones are used every day. */
-const IMPERATIVE_PERSONS: Person[] = PERSONS.slice(1);
 
 const SUBJECTS: Record<string, string> = {
   '1s': 'yo',
@@ -21,6 +19,7 @@ const SUBJECTS: Record<string, string> = {
   '2p': 'vosotros',
   '3p': 'ellos/ellas',
 };
+/** The imperative is asked of tú, usted, nosotros, vosotros, ustedes: the formal ones are used every day. */
 const IMPERATIVE_SUBJECTS: Record<string, string> = {
   '2s': 'tú',
   '3s': 'usted',
@@ -28,10 +27,8 @@ const IMPERATIVE_SUBJECTS: Record<string, string> = {
   '2p': 'vosotros',
   '3p': 'ustedes',
 };
-const subject = ([person, num]: Person) => SUBJECTS[person + num]!;
-const REFLEXIVE_PRONOUNS = ['me', 'te', 'se', 'nos', 'os', 'se'];
 
-/** haber's forms for each simple tense, yo to ellos. */
+/** haber's forms in each simple tense, yo to ellos, by the tense's tags. */
 const HABER: Record<string, string[]> = {
   'pres|ind': ['he', 'has', 'ha', 'hemos', 'habéis', 'han'],
   'impf|ind': ['había', 'habías', 'había', 'habíamos', 'habíais', 'habían'],
@@ -45,128 +42,134 @@ const HABER: Record<string, string[]> = {
 };
 
 /**
- * A simple tense and the compound tense built on it. Two sets of tags for
- * the imperfect subjunctive, whose -ra and -se forms are both right; they
- * are also the keys of haber's forms.
+ * A compound tense: haber in these simple tenses, and the participle. Two
+ * for the pluperfect subjunctive, whose -ra and -se forms are both right.
  */
-interface Tense {
-  tags: string[];
-  name: string;
-  compound?: string;
-  folded?: boolean;
+type Build = string[];
+
+interface Verb {
+  table: InflectionTable;
+  reflexive: boolean;
+  participle: string | undefined;
 }
 
-interface Mood {
-  id: string;
-  name: string;
-  short: string;
-  persons: readonly Person[];
-  subject(person: Person): string;
-  tenses: Tense[];
-}
+const subject = ([person, num]: Person) => SUBJECTS[person + num]!;
 
 /**
  * Folded at first, besides the compound tenses: the future subjunctive,
  * found only in old texts and legal language.
  */
-const MOODS: Mood[] = [
-  {
-    id: 'indicativo',
-    name: 'Indicativo',
-    short: 'Ind.',
-    persons: PERSONS,
-    subject,
-    tenses: [
-      { tags: ['pres|ind'], name: 'Presente', compound: 'Pretérito perfecto' },
-      { tags: ['impf|ind'], name: 'Pretérito imperfecto', compound: 'Pretérito pluscuamperfecto' },
-      { tags: ['pret'], name: 'Pretérito indefinido', compound: 'Pretérito anterior' },
-      { tags: ['fut'], name: 'Futuro', compound: 'Futuro perfecto' },
-    ],
-  },
-  {
-    id: 'condicional',
-    name: 'Condicional',
-    short: 'Cond.',
-    persons: PERSONS,
-    subject,
-    tenses: [{ tags: ['cond'], name: 'Condicional simple', compound: 'Condicional compuesto' }],
-  },
-  {
-    id: 'subjuntivo',
-    name: 'Subjuntivo',
-    short: 'Subj.',
-    persons: PERSONS,
-    subject: (person) => `que ${subject(person)}`,
-    tenses: [
-      { tags: ['pres|sub'], name: 'Presente', compound: 'Pretérito perfecto' },
-      { tags: ['impf|sub|ra', 'impf|sub|se'], name: 'Pretérito imperfecto', compound: 'Pretérito pluscuamperfecto' },
-      { tags: ['fut|sub'], name: 'Futuro', compound: 'Futuro perfecto', folded: true },
-    ],
-  },
-  {
-    id: 'imperativo',
-    name: 'Imperativo',
-    short: 'Imp.',
-    persons: IMPERATIVE_PERSONS,
-    subject: ([person, num]) => `(${IMPERATIVE_SUBJECTS[person + num]})`,
-    tenses: [{ tags: ['imp'], name: 'Afirmativo' }],
-  },
-];
-
-function simpleTense(table: InflectionTable, tense: Tense): TenseSpec {
-  return {
-    name: tense.name,
-    compound: false,
-    folded: tense.folded ?? false,
-    answer(person) {
-      const forms = [...new Set(tense.tags.flatMap((tags) => formsOf(table, `${person.join('|')}|${tags}`)))];
-      return { shown: forms, accepted: forms };
+export const SPANISH: Language<Verb, Build, 'haber'> = {
+  moods: [
+    {
+      id: 'indicativo',
+      name: 'Indicativo',
+      short: 'Ind.',
+      kind: 'plain',
+      persons: PERSONS,
+      pairs: [
+        [
+          { name: 'Presente', tags: ['pres|ind'] },
+          { name: 'Pretérito perfecto', build: ['pres|ind'], on: 'pres|ind' },
+        ],
+        [
+          { name: 'Pretérito imperfecto', tags: ['impf|ind'] },
+          { name: 'Pretérito pluscuamperfecto', build: ['impf|ind'], on: 'impf|ind' },
+        ],
+        [
+          { name: 'Pretérito indefinido', tags: ['pret'] },
+          { name: 'Pretérito anterior', build: ['pret'], on: 'pret' },
+        ],
+        [
+          { name: 'Futuro', tags: ['fut'] },
+          { name: 'Futuro perfecto', build: ['fut'], on: 'fut' },
+        ],
+      ],
     },
-  };
-}
-
-function compoundTense(table: InflectionTable, tense: Tense, name: string): TenseSpec {
-  const participle = formsOf(table, 'past|part|m|s')[0];
-  const reflexive = isReflexive(table.lemma);
-  return {
-    name,
-    compound: true,
-    folded: true,
-    answer(person, i) {
-      // No compound form where the verb has no simple one (llover: only "llueve").
-      if (!participle || formsOf(table, `${person.join('|')}|${tense.tags[0]}`).length === 0) {
-        return { shown: [], accepted: [] };
-      }
-      const pronoun = reflexive ? `${REFLEXIVE_PRONOUNS[i]} ` : '';
-      const forms = tense.tags.map((tags) => `${pronoun}${HABER[tags]![i]} ${participle}`);
-      return { shown: forms, accepted: forms };
+    {
+      id: 'condicional',
+      name: 'Condicional',
+      short: 'Cond.',
+      kind: 'plain',
+      persons: PERSONS,
+      pairs: [
+        [
+          { name: 'Condicional simple', tags: ['cond'] },
+          { name: 'Condicional compuesto', build: ['cond'], on: 'cond' },
+        ],
+      ],
     },
-  };
-}
+    {
+      id: 'subjuntivo',
+      name: 'Subjuntivo',
+      short: 'Subj.',
+      kind: 'subjunctive',
+      persons: PERSONS,
+      pairs: [
+        [
+          { name: 'Presente', tags: ['pres|sub'] },
+          { name: 'Pretérito perfecto', build: ['pres|sub'], on: 'pres|sub' },
+        ],
+        [
+          { name: 'Pretérito imperfecto', tags: ['impf|sub|ra', 'impf|sub|se'] },
+          { name: 'Pretérito pluscuamperfecto', build: ['impf|sub|ra', 'impf|sub|se'], on: 'impf|sub|ra' },
+        ],
+        [
+          { name: 'Futuro', tags: ['fut|sub'], folded: true },
+          { name: 'Futuro perfecto', build: ['fut|sub'], on: 'fut|sub' },
+        ],
+      ],
+    },
+    {
+      id: 'imperativo',
+      name: 'Imperativo',
+      short: 'Imp.',
+      kind: 'imperative',
+      persons: PERSONS.slice(1),
+      pairs: [[{ name: 'Afirmativo', tags: ['imp'] }]],
+    },
+  ],
+
+  forms: [
+    {
+      id: 'formas',
+      name: 'Formas no personales',
+      short: 'Part.',
+      tense: 'Gerundio y participio',
+      rows({ table }) {
+        const gerund = formsOf(table, 'ger');
+        // The participle agrees only when used as an adjective (las cartas escritas); all four are right.
+        // Some have a second, adjectival form (pagado, pago; elegido, electo): right, but not shown.
+        const participle = formsOf(table, 'past|part|m|s').slice(0, 1);
+        const agreed = ['m|s', 'f|s', 'm|p', 'f|p'].flatMap((tags) => formsOf(table, `past|part|${tags}`));
+        return [
+          { label: 'gerundio', shown: gerund, accepted: gerund },
+          { label: 'participio', shown: participle, accepted: [...new Set(agreed)] },
+        ];
+      },
+    },
+  ],
+
+  subject(person, kind) {
+    if (kind === 'imperative') return `(${IMPERATIVE_SUBJECTS[person.join('')]})`;
+    return kind === 'subjunctive' ? `que ${subject(person)}` : subject(person);
+  },
+
+  verb(table) {
+    return { table, reflexive: isReflexive(table.lemma), participle: formsOf(table, 'past|part|m|s')[0] };
+  },
+
+  auxiliaries(verb) {
+    return verb.participle ? { shown: ['haber'], also: [] } : { shown: [], also: [] };
+  },
+
+  build(verb, tenses, _auxiliary, person, i) {
+    const pronoun = verb.reflexive ? `${REFLEXIVE_PRONOUNS[person.join('')]} ` : '';
+    const forms = tenses.map((tense) => `${pronoun}${HABER[tense]![i]} ${verb.participle}`);
+    return { shown: forms, accepted: forms };
+  },
+};
 
 export function conjugationLayout(table: InflectionTable): ConjugationLayout {
-  const moods: MoodSpec[] = MOODS.map((mood) => ({
-    ...mood,
-    pairs: mood.tenses.map((tense) => [
-      simpleTense(table, tense),
-      ...(tense.compound ? [compoundTense(table, tense, tense.compound)] : []),
-    ]),
-  }));
-
-  // The participle agrees only when used as an adjective (las cartas escritas); all four are right.
-  // Some have a second, adjectival form (pagado, pago; elegido, electo): right, but not shown.
-  const participle = formsOf(table, 'past|part|m|s').slice(0, 1);
-  const agreed = ['m|s', 'f|s', 'm|p', 'f|p'].flatMap((tags) => formsOf(table, `past|part|${tags}`));
-  const gerund = formsOf(table, 'ger');
-  return {
-    lemma: table.lemma,
-    pos: table.pos,
-    moods: [
-      ...moods.map(moodOf),
-      formsMood('formas', 'Formas no personales', 'Part.', 'Gerundio y participio', [
-        { label: 'gerundio', shown: gerund, accepted: gerund },
-        { label: 'participio', shown: participle, accepted: [...new Set(agreed)] },
-      ]),
-    ],
-  };
+  return layOut(SPANISH, table);
 }

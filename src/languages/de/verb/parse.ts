@@ -16,9 +16,11 @@ import { textWithoutNotes as text, verbTable } from '../../verbTables';
 function parseInflections(table: Element): Inflection[] {
   const bySlot = new Map<string, Inflection>();
   for (const span of Array.from(table.querySelectorAll('span.form-of'))) {
-    const tags = formOfTags(span);
+    const read = formOfTags(span);
     const form = text(span);
-    if (!tags || !form) continue;
+    if (!read || !form) continue;
+    // The imperative is tagged by number only (s|imp); give it its person, as the other forms have.
+    const tags = read[1] === 'imp' ? ['2', ...read] : read;
     const key = tags.join('|');
     const slot = bySlot.get(key) ?? { tags, forms: [], ipa: [] };
     bySlot.set(key, slot);

@@ -1,26 +1,19 @@
 import type { InflectionTable } from '../../../core/types';
-import { formsMood, formsOf, moodOf, type ConjugationLayout, type MoodSpec, type TenseSpec } from '../../conjugation';
+import { formsOf, layOut, type ConjugationLayout, type Language } from '../../conjugation';
 import { PERSONS, type Person } from '../../verbTables';
 import { isReflexive, REFLEXIVE_PRONOUNS } from './reflexive';
 
 /**
- * An Italian conjugation in the shared layout (../../conjugation.ts). The
- * simple tenses come from the table; the compound tenses, which Wiktionary
- * only describes through the auxiliary, are built here: the auxiliary's form
- * and the past participle, which agrees with the subject after essere (sono
- * andato/a).
+ * Italian, described for the shared engine (../../conjugation.ts): its
+ * moods and tenses, and how a compound form is spelled. The simple tenses
+ * come from the table; the compound tenses, which Wiktionary only describes
+ * through the auxiliary, are the auxiliary's form and the past participle,
+ * which agrees with the subject after essere (sono andato/a).
  */
 
-const IMPERATIVE_PERSONS: Person[] = [
-  ['2', 's'],
-  ['1', 'p'],
-  ['2', 'p'],
-];
-
 const SUBJECTS: Record<string, string> = { '1s': 'io', '2s': 'tu', '3s': 'lui/lei', '1p': 'noi', '2p': 'voi', '3p': 'loro' };
-const subject = ([person, num]: Person) => SUBJECTS[person + num]!;
 
-/** The auxiliaries' forms for each simple tense, io to loro. */
+/** The auxiliaries' forms in each simple tense, io to loro, by the tense's tags. */
 const AUXILIARY_FORMS: Record<string, Record<string, string[]>> = {
   avere: {
     'pres|ind': ['ho', 'hai', 'ha', 'abbiamo', 'avete', 'hanno'],
@@ -42,66 +35,8 @@ const AUXILIARY_FORMS: Record<string, Record<string, string[]>> = {
   },
 };
 
-/** A simple tense (its tags, also the key of the auxiliary's forms) and the compound tense built on it. */
-interface Tense {
-  tags: string;
-  name: string;
-  compound?: string;
-  folded?: boolean;
-}
-
-interface Mood {
-  id: string;
-  name: string;
-  short: string;
-  persons: readonly Person[];
-  subject(person: Person): string;
-  tenses: Tense[];
-}
-
-/** The passato remoto and trapassato remoto belong to written narrative: folded at first. */
-const MOODS: Mood[] = [
-  {
-    id: 'indicativo',
-    name: 'Indicativo',
-    short: 'Ind.',
-    persons: PERSONS,
-    subject,
-    tenses: [
-      { tags: 'pres|ind', name: 'Presente', compound: 'Passato prossimo' },
-      { tags: 'impf|ind', name: 'Imperfetto', compound: 'Trapassato prossimo' },
-      { tags: 'phis', name: 'Passato remoto', compound: 'Trapassato remoto', folded: true },
-      { tags: 'fut', name: 'Futuro semplice', compound: 'Futuro anteriore' },
-    ],
-  },
-  {
-    id: 'condizionale',
-    name: 'Condizionale',
-    short: 'Cond.',
-    persons: PERSONS,
-    subject,
-    tenses: [{ tags: 'cond', name: 'Presente', compound: 'Passato' }],
-  },
-  {
-    id: 'congiuntivo',
-    name: 'Congiuntivo',
-    short: 'Cong.',
-    persons: PERSONS,
-    subject: (person) => `che ${subject(person)}`,
-    tenses: [
-      { tags: 'pres|sub', name: 'Presente', compound: 'Passato' },
-      { tags: 'impf|sub', name: 'Imperfetto', compound: 'Trapassato' },
-    ],
-  },
-  {
-    id: 'imperativo',
-    name: 'Imperativo',
-    short: 'Imp.',
-    persons: IMPERATIVE_PERSONS,
-    subject: (person) => `(${subject(person)})`,
-    tenses: [{ tags: 'imp', name: 'Presente' }],
-  },
-];
+/** A compound tense: the auxiliary in this simple tense, and the past participle. */
+type Build = string;
 
 /** "andato" -> ["andato", "andata"] (singular) or ["andati", "andate"] (plural). */
 function agreed(participle: string, plural: boolean): string[] {
@@ -132,86 +67,138 @@ interface Verb {
   participle: string | undefined;
 }
 
-function verbOf(table: InflectionTable): Verb {
-  const reflexive = isReflexive(table.lemma);
-  const auxiliaries = reflexive ? ['essere'] : formsOf(table, 'aux').filter((a) => a in AUXILIARY_FORMS);
-  const participle = formsOf(table, 'past|part')[0];
-  return {
-    table,
-    reflexive,
-    auxiliaries: auxiliaries.length > 0 ? auxiliaries : ['avere'],
-    participle: reflexive ? participle?.replace(/si$/, '') : participle,
-  };
-}
+/** io, tu, lui/lei, noi, voi, loro; che io...; (tu). */
+const subject = ([person, num]: Person) => SUBJECTS[person + num]!;
 
-function simpleTense(verb: Verb, tense: Tense): TenseSpec {
-  return {
-    name: tense.name,
-    compound: false,
-    folded: tense.folded ?? false,
-    answer(person) {
-      const forms = formsOf(verb.table, `${person.join('|')}|${tense.tags}`);
-      return { shown: forms, accepted: forms };
+/** The passato remoto and trapassato remoto belong to written narrative: folded at first. */
+export const ITALIAN: Language<Verb, Build, string> = {
+  moods: [
+    {
+      id: 'indicativo',
+      name: 'Indicativo',
+      short: 'Ind.',
+      kind: 'plain',
+      persons: PERSONS,
+      pairs: [
+        [
+          { name: 'Presente', tags: ['pres|ind'] },
+          { name: 'Passato prossimo', build: 'pres|ind', on: 'pres|ind' },
+        ],
+        [
+          { name: 'Imperfetto', tags: ['impf|ind'] },
+          { name: 'Trapassato prossimo', build: 'impf|ind', on: 'impf|ind' },
+        ],
+        [
+          { name: 'Passato remoto', tags: ['phis'], folded: true },
+          { name: 'Trapassato remoto', build: 'phis', on: 'phis' },
+        ],
+        [
+          { name: 'Futuro semplice', tags: ['fut'] },
+          { name: 'Futuro anteriore', build: 'fut', on: 'fut' },
+        ],
+      ],
     },
-  };
-}
+    {
+      id: 'condizionale',
+      name: 'Condizionale',
+      short: 'Cond.',
+      kind: 'plain',
+      persons: PERSONS,
+      pairs: [
+        [
+          { name: 'Presente', tags: ['cond'] },
+          { name: 'Passato', build: 'cond', on: 'cond' },
+        ],
+      ],
+    },
+    {
+      id: 'congiuntivo',
+      name: 'Congiuntivo',
+      short: 'Cong.',
+      kind: 'subjunctive',
+      persons: PERSONS,
+      pairs: [
+        [
+          { name: 'Presente', tags: ['pres|sub'] },
+          { name: 'Passato', build: 'pres|sub', on: 'pres|sub' },
+        ],
+        [
+          { name: 'Imperfetto', tags: ['impf|sub'] },
+          { name: 'Trapassato', build: 'impf|sub', on: 'impf|sub' },
+        ],
+      ],
+    },
+    {
+      id: 'imperativo',
+      name: 'Imperativo',
+      short: 'Imp.',
+      kind: 'imperative',
+      persons: [
+        ['2', 's'],
+        ['1', 'p'],
+        ['2', 'p'],
+      ],
+      pairs: [[{ name: 'Presente', tags: ['imp'] }]],
+    },
+  ],
 
-function compoundTense(verb: Verb, tense: Tense, name: string): TenseSpec {
-  return {
-    name,
-    compound: true,
-    folded: true,
-    answer(person, i) {
-      // No compound form where the verb has no simple one (piovere: only "piove").
-      const { participle } = verb;
-      if (!participle || formsOf(verb.table, `${person.join('|')}|${tense.tags}`).length === 0) {
-        return { shown: [], accepted: [] };
-      }
-      const plural = person[1] === 'p';
-      const pronoun = verb.reflexive ? `${REFLEXIVE_PRONOUNS[person.join('')]} ` : '';
-      const shown: string[] = [];
-      const accepted: string[] = [];
-      verb.auxiliaries.forEach((auxiliary, n) => {
-        const aux = AUXILIARY_FORMS[auxiliary]![tense.tags]![i]!;
-        if (auxiliary === 'essere') {
-          if (n === 0) shown.push(`${pronoun}${aux} ${agreedNotation(participle, plural)}`);
-          accepted.push(...agreed(participle, plural).map((p) => `${pronoun}${aux} ${p}`));
-        } else {
-          if (n === 0) shown.push(`${aux} ${participle}`);
-          accepted.push(`${aux} ${participle}`);
-        }
-      });
-      return { shown, accepted };
+  forms: [
+    {
+      id: 'participio',
+      name: 'Participio e gerundio',
+      short: 'Part.',
+      tense: 'Participio e gerundio',
+      rows(verb) {
+        const participles = verb.participle ? [verb.participle] : [];
+        const gerund = formsOf(verb.table, 'ger');
+        return [
+          {
+            label: 'participio passato',
+            shown: participles,
+            // The agreed forms (andata, andati, andate) are right too.
+            accepted: [...new Set(participles.flatMap((p) => [...agreed(p, false), ...agreed(p, true)]))],
+          },
+          { label: 'gerundio', shown: gerund, accepted: gerund },
+        ];
+      },
     },
-  };
-}
+  ],
+
+  subject(person, kind) {
+    if (kind === 'imperative') return `(${subject(person)})`;
+    return kind === 'subjunctive' ? `che ${subject(person)}` : subject(person);
+  },
+
+  verb(table) {
+    const reflexive = isReflexive(table.lemma);
+    const auxiliaries = reflexive ? ['essere'] : formsOf(table, 'aux').filter((a) => a in AUXILIARY_FORMS);
+    const participle = formsOf(table, 'past|part')[0];
+    return {
+      table,
+      reflexive,
+      auxiliaries: auxiliaries.length > 0 ? auxiliaries : ['avere'],
+      participle: reflexive ? participle?.replace(/si$/, '') : participle,
+    };
+  },
+
+  auxiliaries(verb) {
+    if (!verb.participle) return { shown: [], also: [] };
+    return { shown: verb.auxiliaries.slice(0, 1), also: verb.auxiliaries.slice(1) };
+  },
+
+  build(verb, tense, auxiliary, person, i) {
+    const participle = verb.participle!;
+    const aux = AUXILIARY_FORMS[auxiliary]![tense]![i]!;
+    if (auxiliary === 'avere') return { shown: [`${aux} ${participle}`], accepted: [`${aux} ${participle}`] };
+    const plural = person[1] === 'p';
+    const pronoun = verb.reflexive ? `${REFLEXIVE_PRONOUNS[person.join('')]} ` : '';
+    return {
+      shown: [`${pronoun}${aux} ${agreedNotation(participle, plural)}`],
+      accepted: agreed(participle, plural).map((p) => `${pronoun}${aux} ${p}`),
+    };
+  },
+};
 
 export function conjugationLayout(table: InflectionTable): ConjugationLayout {
-  const verb = verbOf(table);
-  const moods: MoodSpec[] = MOODS.map((mood) => ({
-    ...mood,
-    pairs: mood.tenses.map((tense) => [
-      simpleTense(verb, tense),
-      ...(tense.compound ? [compoundTense(verb, tense, tense.compound)] : []),
-    ]),
-  }));
-
-  const gerund = formsOf(table, 'ger');
-  const participles = verb.participle ? [verb.participle] : [];
-  return {
-    lemma: table.lemma,
-    pos: table.pos,
-    moods: [
-      ...moods.map(moodOf),
-      formsMood('participio', 'Participio e gerundio', 'Part.', 'Participio e gerundio', [
-        {
-          label: 'participio passato',
-          shown: participles,
-          // The agreed forms (andata, andati, andate) are right too.
-          accepted: [...new Set(participles.flatMap((p) => [...agreed(p, false), ...agreed(p, true)]))],
-        },
-        { label: 'gerundio', shown: gerund, accepted: gerund },
-      ]),
-    ],
-  };
+  return layOut(ITALIAN, table);
 }

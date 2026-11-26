@@ -29,8 +29,8 @@ describe('parseGermanVerbTables', () => {
     expect(forms(t, '2', 's', 'pres')).toEqual(['machst']);
     expect(forms(t, '3', 's', 'pret')).toEqual(['machte']);
     expect(forms(t, '2', 's', 'sub:I')).toEqual(['machest']);
-    expect(forms(t, 's', 'imp')).toEqual(['mach', 'mache']);
-    expect(forms(t, 'p', 'imp')).toEqual(['macht']);
+    expect(forms(t, '2', 's', 'imp')).toEqual(['mach', 'mache']);
+    expect(forms(t, '2', 'p', 'imp')).toEqual(['macht']);
   });
 
   it('reads a strong verb (fahren, sprechen)', () => {
@@ -40,7 +40,7 @@ describe('parseGermanVerbTables', () => {
     expect(forms(fahren!, '1', 's', 'pret')).toEqual(['fuhr']);
     expect(forms(fahren!, '1', 's', 'sub:II')).toEqual(['führe']);
     const [sprechen] = load('sprechen');
-    expect(forms(sprechen!, 's', 'imp')).toEqual(['sprich']);
+    expect(forms(sprechen!, '2', 's', 'imp')).toEqual(['sprich']);
   });
 
   it('reads a separable verb, with both auxiliaries (anfangen)', () => {
