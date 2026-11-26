@@ -2,12 +2,15 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { InflectionTable } from '../../core/types';
+import { conjugationLayout } from '../../languages/de/verb/layout';
 import { parseGermanVerbTables } from '../../languages/de/verb/parse';
+import { reflexiveTable } from '../../languages/de/verb/reflexive';
 import { findLanguageSection, parsePage } from '../../wiktionary/page';
+import { buildSheet as sheetOf } from '../sheet';
 import type { Blank, Sheet } from '../types';
 import { kindOf } from './kinds';
-import { reflexiveTable } from './reflexive';
-import { buildSheet } from './sheet';
+
+const buildSheet = (table: InflectionTable) => sheetOf(conjugationLayout(table));
 
 function load(word: string): InflectionTable {
   const html = readFileSync(resolve(process.cwd(), 'test/fixtures/de', `${word}.html`), 'utf8');

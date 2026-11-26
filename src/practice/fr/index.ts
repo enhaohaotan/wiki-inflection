@@ -1,11 +1,10 @@
 import { auxiliariesInRule } from '../../languages/fr/verb/auxiliaries';
+import { conjugationLayout } from '../../languages/fr/verb/conjugation';
 import { savedTables, type StoredTable } from '../saved';
 import type { PracticeLanguage } from '../types';
-import saved from './data/verbTables.json?raw';
 import { kindOf } from './kinds';
 import { practiceLookup } from './lookup';
 import { plainVerb } from './pronominal';
-import { buildSheet } from './sheet';
 import { KEY_VERBS, PRACTICE_VERBS } from './verbs';
 
 /**
@@ -32,9 +31,10 @@ export const frenchPractice: PracticeLanguage = {
   ready: true,
   verbs: PRACTICE_VERBS,
   keyVerbs: KEY_VERBS,
-  savedTable: savedTables(saved, 'fr', 'fr'),
+  // A chunk of its own, downloaded when the language is first opened.
+  ...savedTables(() => import('./data/verbTables.json?raw'), 'fr', 'fr'),
   lookup: practiceLookup,
-  buildSheet,
+  layout: conjugationLayout,
   // A pronominal verb is credited to its plain verb (se lever -> lever),
   // whose page its table is built from.
   sourcePage: (table) => plainVerb(table.lemma),

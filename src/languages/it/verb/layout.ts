@@ -1,24 +1,16 @@
-import type { InflectionTable } from '../../core/types';
-import type { Blank, Exercise, Sheet, SheetSection } from '../types';
+import type { InflectionTable } from '../../../core/types';
+import { formsMood, formsOf, moodOf, type ConjugationLayout, type MoodSpec, type TenseSpec } from '../../conjugation';
+import { PERSONS, type Person } from '../../verbTables';
 import { isReflexive, REFLEXIVE_PRONOUNS } from './reflexive';
 
 /**
- * An Italian conjugation as exercises. The simple tenses come from the
- * table; the compound tenses, which Wiktionary only describes through the
- * auxiliary, are built here: the auxiliary's form and the past participle,
- * which agrees with the subject after essere (sono andato/a).
+ * An Italian conjugation in the shared layout (../../conjugation.ts). The
+ * simple tenses come from the table; the compound tenses, which Wiktionary
+ * only describes through the auxiliary, are built here: the auxiliary's form
+ * and the past participle, which agrees with the subject after essere (sono
+ * andato/a).
  */
 
-type Person = [person: string, num: string];
-
-const PERSONS: Person[] = [
-  ['1', 's'],
-  ['2', 's'],
-  ['3', 's'],
-  ['1', 'p'],
-  ['2', 'p'],
-  ['3', 'p'],
-];
 const IMPERATIVE_PERSONS: Person[] = [
   ['2', 's'],
   ['1', 'p'],
@@ -26,14 +18,7 @@ const IMPERATIVE_PERSONS: Person[] = [
 ];
 
 const SUBJECTS: Record<string, string> = { '1s': 'io', '2s': 'tu', '3s': 'lui/lei', '1p': 'noi', '2p': 'voi', '3p': 'loro' };
-
-type Kind = 'plain' | 'subjunctive' | 'imperative';
-
-function subject([person, num]: Person, kind: Kind): string {
-  const base = SUBJECTS[person + num]!;
-  if (kind === 'imperative') return `(${base})`;
-  return kind === 'subjunctive' ? `che ${base}` : base;
-}
+const subject = ([person, num]: Person) => SUBJECTS[person + num]!;
 
 /** The auxiliaries' forms for each simple tense, io to loro. */
 const AUXILIARY_FORMS: Record<string, Record<string, string[]>> = {
@@ -57,30 +42,31 @@ const AUXILIARY_FORMS: Record<string, Record<string, string[]>> = {
   },
 };
 
-interface TenseSpec {
-  /** Tags of the simple tense, also the key of the auxiliary's forms. */
+/** A simple tense (its tags, also the key of the auxiliary's forms) and the compound tense built on it. */
+interface Tense {
   tags: string;
   name: string;
-  /** The compound tense built on it, if any. */
   compound?: string;
   folded?: boolean;
 }
 
-interface MoodSpec {
+interface Mood {
   id: string;
   name: string;
   short: string;
-  kind: Kind;
-  tenses: TenseSpec[];
+  persons: readonly Person[];
+  subject(person: Person): string;
+  tenses: Tense[];
 }
 
 /** The passato remoto and trapassato remoto belong to written narrative: folded at first. */
-const MOODS: MoodSpec[] = [
+const MOODS: Mood[] = [
   {
     id: 'indicativo',
     name: 'Indicativo',
     short: 'Ind.',
-    kind: 'plain',
+    persons: PERSONS,
+    subject,
     tenses: [
       { tags: 'pres|ind', name: 'Presente', compound: 'Passato prossimo' },
       { tags: 'impf|ind', name: 'Imperfetto', compound: 'Trapassato prossimo' },
@@ -92,14 +78,16 @@ const MOODS: MoodSpec[] = [
     id: 'condizionale',
     name: 'Condizionale',
     short: 'Cond.',
-    kind: 'plain',
+    persons: PERSONS,
+    subject,
     tenses: [{ tags: 'cond', name: 'Presente', compound: 'Passato' }],
   },
   {
     id: 'congiuntivo',
     name: 'Congiuntivo',
     short: 'Cong.',
-    kind: 'subjunctive',
+    persons: PERSONS,
+    subject: (person) => `che ${subject(person)}`,
     tenses: [
       { tags: 'pres|sub', name: 'Presente', compound: 'Passato' },
       { tags: 'impf|sub', name: 'Imperfetto', compound: 'Trapassato' },
@@ -109,14 +97,11 @@ const MOODS: MoodSpec[] = [
     id: 'imperativo',
     name: 'Imperativo',
     short: 'Imp.',
-    kind: 'imperative',
+    persons: IMPERATIVE_PERSONS,
+    subject: (person) => `(${subject(person)})`,
     tenses: [{ tags: 'imp', name: 'Presente' }],
   },
 ];
-
-function formsOf(table: InflectionTable, tags: string): string[] {
-  return table.inflections.find((i) => i.tags.join('|') === tags)?.forms ?? [];
-}
 
 /** "andato" -> ["andato", "andata"] (singular) or ["andati", "andate"] (plural). */
 function agreed(participle: string, plural: boolean): string[] {
@@ -159,92 +144,74 @@ function verbOf(table: InflectionTable): Verb {
   };
 }
 
-function simpleBlanks(verb: Verb, mood: MoodSpec, tense: TenseSpec): Blank[] {
-  const persons = mood.kind === 'imperative' ? IMPERATIVE_PERSONS : PERSONS;
-  return persons.map((person, i) => {
-    const forms = formsOf(verb.table, `${person.join('|')}|${tense.tags}`);
-    return {
-      id: `${mood.id}/${tense.name}/${i}`,
-      label: subject(person, mood.kind),
-      forms,
-      accepted: forms,
-    };
-  });
+function simpleTense(verb: Verb, tense: Tense): TenseSpec {
+  return {
+    name: tense.name,
+    compound: false,
+    folded: tense.folded ?? false,
+    answer(person) {
+      const forms = formsOf(verb.table, `${person.join('|')}|${tense.tags}`);
+      return { shown: forms, accepted: forms };
+    },
+  };
 }
 
-function compoundBlanks(verb: Verb, mood: MoodSpec, tense: TenseSpec, name: string): Blank[] {
-  return PERSONS.map((person, i) => {
-    const key = person.join('');
-    const plural = person[1] === 'p';
-    // No compound form where the verb has no simple one (piovere: only "piove").
-    const exists = verb.participle && formsOf(verb.table, `${person.join('|')}|${tense.tags}`).length > 0;
-    const shown: string[] = [];
-    const accepted: string[] = [];
-    if (exists) {
-      const pronoun = verb.reflexive ? `${REFLEXIVE_PRONOUNS[key]} ` : '';
+function compoundTense(verb: Verb, tense: Tense, name: string): TenseSpec {
+  return {
+    name,
+    compound: true,
+    folded: true,
+    answer(person, i) {
+      // No compound form where the verb has no simple one (piovere: only "piove").
+      const { participle } = verb;
+      if (!participle || formsOf(verb.table, `${person.join('|')}|${tense.tags}`).length === 0) {
+        return { shown: [], accepted: [] };
+      }
+      const plural = person[1] === 'p';
+      const pronoun = verb.reflexive ? `${REFLEXIVE_PRONOUNS[person.join('')]} ` : '';
+      const shown: string[] = [];
+      const accepted: string[] = [];
       verb.auxiliaries.forEach((auxiliary, n) => {
         const aux = AUXILIARY_FORMS[auxiliary]![tense.tags]![i]!;
         if (auxiliary === 'essere') {
-          if (n === 0) shown.push(`${pronoun}${aux} ${agreedNotation(verb.participle!, plural)}`);
-          accepted.push(...agreed(verb.participle!, plural).map((p) => `${pronoun}${aux} ${p}`));
+          if (n === 0) shown.push(`${pronoun}${aux} ${agreedNotation(participle, plural)}`);
+          accepted.push(...agreed(participle, plural).map((p) => `${pronoun}${aux} ${p}`));
         } else {
-          if (n === 0) shown.push(`${aux} ${verb.participle}`);
-          accepted.push(`${aux} ${verb.participle}`);
+          if (n === 0) shown.push(`${aux} ${participle}`);
+          accepted.push(`${aux} ${participle}`);
         }
       });
-    }
-    return { id: `${mood.id}/${name}/${i}`, label: subject(person, mood.kind), forms: shown, accepted };
-  });
+      return { shown, accepted };
+    },
+  };
 }
 
-export function buildSheet(table: InflectionTable): Sheet {
+export function conjugationLayout(table: InflectionTable): ConjugationLayout {
   const verb = verbOf(table);
-  const sections: SheetSection[] = MOODS.map((mood) => ({
-    id: mood.id,
-    name: mood.name,
-    short: mood.short,
-    pairs: mood.tenses.map((tense) => {
-      const pair: Exercise[] = [
-        { name: tense.name, compound: false, folded: tense.folded ?? false, blanks: simpleBlanks(verb, mood, tense) },
-      ];
-      if (tense.compound) {
-        pair.push({
-          name: tense.compound,
-          compound: true,
-          folded: true,
-          blanks: compoundBlanks(verb, mood, tense, tense.compound),
-        });
-      }
-      return pair;
-    }),
+  const moods: MoodSpec[] = MOODS.map((mood) => ({
+    ...mood,
+    pairs: mood.tenses.map((tense) => [
+      simpleTense(verb, tense),
+      ...(tense.compound ? [compoundTense(verb, tense, tense.compound)] : []),
+    ]),
   }));
 
   const gerund = formsOf(table, 'ger');
   const participles = verb.participle ? [verb.participle] : [];
-  sections.push({
-    id: 'participio',
-    name: 'Participio e gerundio',
-    short: 'Part.',
-    pairs: [
-      [
+  return {
+    lemma: table.lemma,
+    pos: table.pos,
+    moods: [
+      ...moods.map(moodOf),
+      formsMood('participio', 'Participio e gerundio', 'Part.', 'Participio e gerundio', [
         {
-          name: 'Participio e gerundio',
-          compound: false,
-          folded: false,
-          blanks: [
-            {
-              id: 'participio/participio passato',
-              label: 'participio passato',
-              forms: participles,
-              // The agreed forms (andata, andati, andate) are right too.
-              accepted: [...new Set(participles.flatMap((p) => [...agreed(p, false), ...agreed(p, true)]))],
-            },
-            { id: 'participio/gerundio', label: 'gerundio', forms: gerund, accepted: gerund },
-          ],
+          label: 'participio passato',
+          shown: participles,
+          // The agreed forms (andata, andati, andate) are right too.
+          accepted: [...new Set(participles.flatMap((p) => [...agreed(p, false), ...agreed(p, true)]))],
         },
-      ],
+        { label: 'gerundio', shown: gerund, accepted: gerund },
+      ]),
     ],
-  });
-
-  return { lemma: table.lemma, pos: table.pos, sections };
+  };
 }

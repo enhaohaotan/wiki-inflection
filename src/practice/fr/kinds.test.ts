@@ -2,11 +2,11 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { french } from '../../languages/fr';
+import { startsFolded } from '../../languages/fr/verb/conjugation';
 import { findLanguageSection, parsePage } from '../../wiktionary/page';
-import { startsFolded } from './sheet';
 import { randomVerb } from '../random';
-import { KEY_VERBS, PRACTICE_VERBS } from './verbs';
 import { kindOf } from './kinds';
+import { KEY_VERBS, PRACTICE_VERBS } from './verbs';
 
 function table(verb: string) {
   const html = readFileSync(resolve(process.cwd(), 'test/fixtures', `${verb}.html`), 'utf8');

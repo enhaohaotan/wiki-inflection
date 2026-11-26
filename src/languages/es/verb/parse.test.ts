@@ -24,13 +24,13 @@ describe('parseSpanishVerbTables', () => {
     const t = tables[0]!;
     expect(t.meta.class).toBeUndefined();
     expect(forms(t, 'ger')).toEqual(['hablando']);
-    expect(forms(t, 'pp', 'm', 's')).toEqual(['hablado']);
-    expect(forms(t, 'pp', 'f', 'p')).toEqual(['habladas']);
+    expect(forms(t, 'past', 'part', 'm', 's')).toEqual(['hablado']);
+    expect(forms(t, 'past', 'part', 'f', 'p')).toEqual(['habladas']);
     // The tú form only, not the voseo one (hablás).
     expect(forms(t, '2', 's', 'pres', 'ind')).toEqual(['hablas']);
     expect(forms(t, '1', 'p', 'impf', 'ind')).toEqual(['hablábamos']);
     expect(forms(t, '3', 's', 'pret')).toEqual(['habló']);
-    expect(forms(t, '1', 's', 'fut', 'ind')).toEqual(['hablaré']);
+    expect(forms(t, '1', 's', 'fut')).toEqual(['hablaré']);
     expect(forms(t, '2', 'p', 'cond')).toEqual(['hablaríais']);
     expect(forms(t, '2', 's', 'pres', 'sub')).toEqual(['hables']);
     expect(forms(t, '1', 'p', 'impf', 'sub', 'ra')).toEqual(['habláramos']);
@@ -51,7 +51,7 @@ describe('parseSpanishVerbTables', () => {
     expect(forms(t!, '1', 'p', 'imp')).toEqual(['llamémonos']);
     expect(forms(t!, '2', 'p', 'imp')).toEqual(['llamaos']);
     expect(forms(t!, 'ger')).toEqual(['llamándose']);
-    expect(forms(t!, 'pp', 'm', 's')).toEqual(['llamado']);
+    expect(forms(t!, 'past', 'part', 'm', 's')).toEqual(['llamado']);
   });
 
   it('reads irregular verbs and their class', () => {

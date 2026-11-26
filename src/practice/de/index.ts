@@ -1,15 +1,14 @@
+import { conjugationLayout } from '../../languages/de/verb/layout';
+import { hasForms } from '../conjugation';
 import { savedTables, type StoredTable } from '../saved';
 import type { PracticeLanguage } from '../types';
-import saved from './data/verbTables.json?raw';
 import { kindOf } from './kinds';
 import { practiceLookup } from './lookup';
-import { buildSheet } from './sheet';
 import { KEY_VERBS, PRACTICE_VERBS } from './verbs';
 
-/** Whether a table has what the sheet needs: the present and the past participle. */
+/** Whether a table has what the sheet needs: the present (only "regnet" for regnen) and the past participle. */
 function isComplete(table: StoredTable): boolean {
-  const has = (tags: string) => table.inflections.some((i) => i.tags.join('|') === tags && i.forms.length > 0);
-  return (has('1|s|pres') || has('3|s|pres')) && has('past|part');
+  return hasForms(table, '3|s|pres', 'past|part');
 }
 
 export const germanPractice: PracticeLanguage = {
@@ -22,9 +21,10 @@ export const germanPractice: PracticeLanguage = {
   ready: true,
   verbs: PRACTICE_VERBS,
   keyVerbs: KEY_VERBS,
-  savedTable: savedTables(saved, 'de', 'de'),
+  // A chunk of its own, downloaded when the language is first opened.
+  ...savedTables(() => import('./data/verbTables.json?raw'), 'de', 'de'),
   lookup: practiceLookup,
-  buildSheet,
+  layout: conjugationLayout,
   // A reflexive verb's table is built from the plain verb's page (sich freuen: freuen).
   sourcePage: (table) => table.meta.page ?? table.lemma,
   kindOf,

@@ -1,4 +1,4 @@
-import type { Inflection, InflectionTable } from '../../core/types';
+import type { Inflection, InflectionTable } from '../../../core/types';
 
 /**
  * Reflexive verbs (alzarsi). Wiktionary usually has a page with the

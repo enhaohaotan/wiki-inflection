@@ -1,4 +1,4 @@
-import type { Inflection, InflectionTable } from '../../core/types';
+import type { Inflection, InflectionTable } from '../../../core/types';
 
 /**
  * Reflexive verbs (sich freuen). Wiktionary conjugates only the plain verb

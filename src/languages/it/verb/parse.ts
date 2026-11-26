@@ -1,5 +1,6 @@
 import type { Inflection, InflectionTable } from '../../../core/types';
 import { cleanText } from '../../../wiktionary/page';
+import { label, PERSONS, verbTable, type Person } from '../../verbTables';
 
 /**
  * Extracts Italian verb conjugation tables from the Italian section of a page.
@@ -77,25 +78,10 @@ const FINITE_TAGS: Record<string, Record<string, string[]>> = {
   },
 };
 
-const PERSONS: [string, string][] = [
-  ['1', 's'],
-  ['2', 's'],
-  ['3', 's'],
-  ['1', 'p'],
-  ['2', 'p'],
-  ['3', 'p'],
-];
-
 /** The imperative row's columns: none for "io", then tu, Lei, noi, voi, Loro. */
-const IMPERATIVE_PERSONS: ([string, string] | null)[] = [null, ['2', 's'], ['3', 's'], ['1', 'p'], ['2', 'p'], ['3', 'p']];
+const IMPERATIVE_PERSONS: (Person | null)[] = [null, ...PERSONS.slice(1)];
 
 const MOOD_CLASS = /\broa-(indicative|subjunctive|imperative)-left-rail\b/;
-
-function label(th: Element): string {
-  const clone = th.cloneNode(true) as Element;
-  clone.querySelectorAll('sup').forEach((el) => el.remove());
-  return cleanText(clone).toLowerCase();
-}
 
 function parseInflections(table: Element): Inflection[] {
   const result: Inflection[] = [];
@@ -144,33 +130,10 @@ function parseInflections(table: Element): Inflection[] {
   return result;
 }
 
-/** "Conjugation of finìre (-ire; irregular) (See Appendix:Italian verbs)" -> "-ire; irregular". */
-function verbClass(frame: Element | null): string {
-  const head = cleanText(frame?.querySelector('.NavHead'));
-  return /\(((?!See )[^)]*)\)/.exec(head)?.[1] ?? '';
-}
-
 export function parseItalianVerbTables(section: Element, pageTitle: string): InflectionTable[] {
-  const tables: InflectionTable[] = [];
-  for (const table of Array.from(section.querySelectorAll(TABLE_SELECTOR))) {
-    const inflections = parseInflections(table);
-    if (!inflections.some((i) => i.tags.includes('pres') && i.tags.includes('ind'))) continue;
-
-    const lemma = inflections.find((i) => i.tags[0] === 'inf')?.forms[0] ?? pageTitle;
-    const meta: Record<string, string> = { page: pageTitle };
-    const verbClassNote = verbClass(table.closest('.NavFrame'));
-    if (verbClassNote) meta.class = verbClassNote;
-
-    tables.push({
-      lang: 'it',
-      pos: 'verb',
-      lemma,
-      title: `Conjugation of ${lemma}`,
-      inflections,
-      periphrastic: [],
-      notes: [],
-      meta,
-    });
-  }
-  return tables;
+  return Array.from(section.querySelectorAll(TABLE_SELECTOR)).flatMap((table) => {
+    const heading = cleanText(table.closest('.NavFrame')?.querySelector('.NavHead'));
+    const isPresent = (i: Inflection) => i.tags.includes('pres') && i.tags.includes('ind');
+    return verbTable('it', parseInflections(table), pageTitle, heading, isPresent) ?? [];
+  });
 }

@@ -1,4 +1,4 @@
-import type { Inflection, InflectionTable } from '../../core/types';
+import type { Inflection, InflectionTable } from '../../../core/types';
 
 /**
  * Reflexive verbs (levantarse). Wiktionary usually gives their tables, on a
@@ -86,7 +86,7 @@ export function reflexiveTable(plain: InflectionTable, verb: string): Inflection
   for (const slot of plain.inflections) {
     const tags = slot.tags.join('|');
     if (tags === 'ger') inflections.push({ tags: slot.tags, forms: slot.forms.map((f) => attach(f, 'se')), ipa: [] });
-    else if (slot.tags[0] === 'pp') inflections.push(slot);
+    else if (slot.tags[0] === 'past') inflections.push(slot);
     else if (/^[123]\|[sp]\|/.test(tags)) {
       const forms = reflexiveForms(slot);
       if (forms?.length) inflections.push({ tags: slot.tags, forms, ipa: [] });

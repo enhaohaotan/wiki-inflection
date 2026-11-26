@@ -1,26 +1,16 @@
-import type { InflectionTable } from '../../core/types';
-import type { Blank, Exercise, Sheet, SheetSection } from '../types';
+import type { InflectionTable } from '../../../core/types';
+import { formsMood, formsOf, moodOf, type ConjugationLayout, type MoodSpec, type TenseSpec } from '../../conjugation';
+import { PERSONS, type Person } from '../../verbTables';
 import { USUAL_AUXILIARY } from './auxiliaries';
 import { isReflexive, REFLEXIVE_PRONOUNS } from './reflexive';
 
 /**
- * A German conjugation as exercises. The simple tenses come from the table;
- * the compound ones are built here: haben or sein and the past participle
- * (habe gemacht, bin gefahren), werden and the infinitive (werde machen,
- * würde machen), with the reflexive pronoun after the first verb (habe mich
- * gefreut).
+ * A German conjugation in the shared layout (../../conjugation.ts). The
+ * simple tenses come from the table; the compound ones are built here: haben
+ * or sein and the past participle (habe gemacht, bin gefahren), werden and
+ * the infinitive (werde machen, würde machen), with the reflexive pronoun
+ * after the first verb (habe mich gefreut).
  */
-
-type Person = [person: string, num: string];
-
-const PERSONS: Person[] = [
-  ['1', 's'],
-  ['2', 's'],
-  ['3', 's'],
-  ['1', 'p'],
-  ['2', 'p'],
-  ['3', 'p'],
-];
 
 const SUBJECTS: Record<string, string> = {
   '1s': 'ich',
@@ -61,31 +51,31 @@ type Build =
   /** werden in `tense` + participle + haben/sein: Futur II. */
   | { kind: 'future perfect'; tense: string };
 
-interface TenseSpec {
+interface Tense {
   name: string;
   build: Build;
   folded: boolean;
 }
 
-interface MoodSpec {
+interface Mood {
   id: string;
   name: string;
   short: string;
-  pairs: TenseSpec[][];
+  pairs: Tense[][];
 }
 
-const simple = (name: string, tags: string, folded = false): TenseSpec => ({
+const simple = (name: string, tags: string, folded = false): Tense => ({
   name,
   build: { kind: 'simple', tags },
   folded,
 });
-const built = (name: string, build: Build): TenseSpec => ({ name, build, folded: true });
+const built = (name: string, build: Build): Tense => ({ name, build, folded: true });
 
 /**
  * The compound tenses start folded, as in the other languages, and so does
  * the whole Konjunktiv I, which is used in reported speech in writing.
  */
-const MOODS: MoodSpec[] = [
+const MOODS: Mood[] = [
   {
     id: 'indikativ',
     name: 'Indikativ',
@@ -115,10 +105,6 @@ const MOODS: MoodSpec[] = [
     ],
   },
 ];
-
-function formsOf(table: InflectionTable, tags: string): string[] {
-  return table.inflections.find((i) => i.tags.join('|') === tags)?.forms ?? [];
-}
 
 interface Verb {
   table: InflectionTable;
@@ -174,79 +160,56 @@ function builtForms(verb: Verb, build: Exclude<Build, { kind: 'simple' }>, i: nu
   return [shown, [...shown, ...verb.rareAuxiliaries.map(form)]];
 }
 
-function blanks(verb: Verb, mood: MoodSpec, tense: TenseSpec): Blank[] {
-  return PERSONS.map((person, i) => {
-    const id = `${mood.id}/${tense.name}/${i}`;
-    const label = SUBJECTS[person.join('')]!;
-    // No form where the verb has none in the present (regnen: only "regnet").
-    const exists = formsOf(verb.table, `${person.join('|')}|pres`).length > 0;
-    if (!exists) return { id, label, forms: [], accepted: [] };
-    if (tense.build.kind === 'simple') {
-      const forms = formsOf(verb.table, `${person.join('|')}|${tense.build.tags}`);
-      return { id, label, forms, accepted: forms };
-    }
-    const [forms, accepted] = builtForms(verb, tense.build, i);
-    return { id, label, forms, accepted };
-  });
+function tenseSpec(verb: Verb, tense: Tense): TenseSpec {
+  return {
+    name: tense.name,
+    compound: tense.build.kind !== 'simple',
+    folded: tense.folded,
+    answer(person: Person, i: number) {
+      // No form where the verb has none in the present (regnen: only "regnet").
+      if (formsOf(verb.table, `${person.join('|')}|pres`).length === 0) return { shown: [], accepted: [] };
+      if (tense.build.kind === 'simple') {
+        const forms = formsOf(verb.table, `${person.join('|')}|${tense.build.tags}`);
+        return { shown: forms, accepted: forms };
+      }
+      const [shown, accepted] = builtForms(verb, tense.build, i);
+      return { shown, accepted };
+    },
+  };
 }
 
-export function buildSheet(table: InflectionTable): Sheet {
+export function conjugationLayout(table: InflectionTable): ConjugationLayout {
   const verb = verbOf(table);
-  const sections: SheetSection[] = MOODS.map((mood) => ({
-    id: mood.id,
-    name: mood.name,
-    short: mood.short,
-    pairs: mood.pairs.map((pair) =>
-      pair.map(
-        (tense): Exercise => ({
-          name: tense.name,
-          compound: tense.build.kind !== 'simple',
-          folded: tense.folded,
-          blanks: blanks(verb, mood, tense),
-        }),
-      ),
-    ),
+  const subject = ([person, num]: Person) => SUBJECTS[person + num]!;
+  const moods: MoodSpec[] = MOODS.map((mood) => ({
+    ...mood,
+    persons: PERSONS,
+    subject,
+    pairs: mood.pairs.map((pair) => pair.map((tense) => tenseSpec(verb, tense))),
   }));
 
-  const imperative = (tags: string, label: string): Blank => {
+  const imperative = (tags: string, label: string) => {
     const forms = formsOf(table, tags);
-    return { id: `imperativ/${label}`, label, forms, accepted: forms };
+    return { label, shown: forms, accepted: forms };
   };
-  sections.push({
-    id: 'imperativ',
-    name: 'Imperativ',
-    short: 'Imp.',
-    pairs: [
-      [
-        {
-          name: 'Imperativ',
-          compound: false,
-          folded: false,
-          blanks: [imperative('s|imp', '(du)'), imperative('p|imp', '(ihr)')],
-        },
-      ],
-    ],
-  });
-
-  const participle = (tags: string, label: string): Blank => {
-    const forms = formsOf(table, tags).slice(0, 1);
-    return { id: `partizip/${label}`, label, forms, accepted: formsOf(table, tags) };
+  // Some have a second form (Partizip II of senden: gesandt, gesendet): right, but not shown.
+  const participle = (tags: string, label: string) => {
+    const forms = formsOf(table, tags);
+    return { label, shown: forms.slice(0, 1), accepted: forms };
   };
-  sections.push({
-    id: 'partizip',
-    name: 'Partizip',
-    short: 'Part.',
-    pairs: [
-      [
-        {
-          name: 'Partizip',
-          compound: false,
-          folded: false,
-          blanks: [participle('pres|part', 'Partizip I'), participle('past|part', 'Partizip II')],
-        },
-      ],
+  return {
+    lemma: table.lemma,
+    pos: table.pos,
+    moods: [
+      ...moods.map(moodOf),
+      formsMood('imperativ', 'Imperativ', 'Imp.', 'Imperativ', [
+        imperative('s|imp', '(du)'),
+        imperative('p|imp', '(ihr)'),
+      ]),
+      formsMood('partizip', 'Partizip', 'Part.', 'Partizip', [
+        participle('pres|part', 'Partizip I'),
+        participle('past|part', 'Partizip II'),
+      ]),
     ],
-  });
-
-  return { lemma: table.lemma, pos: table.pos, sections };
+  };
 }

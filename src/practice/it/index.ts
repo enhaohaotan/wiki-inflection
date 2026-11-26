@@ -1,15 +1,14 @@
+import { conjugationLayout } from '../../languages/it/verb/layout';
+import { hasForms } from '../conjugation';
 import { savedTables, type StoredTable } from '../saved';
 import type { PracticeLanguage } from '../types';
-import saved from './data/verbTables.json?raw';
 import { kindOf } from './kinds';
 import { practiceLookup } from './lookup';
-import { buildSheet } from './sheet';
 import { KEY_VERBS, PRACTICE_VERBS } from './verbs';
 
-/** Whether a table has what the sheet needs: the present, the past participle and the auxiliary. */
+/** Whether a table has what the sheet needs: the present (only "piove" for piovere), the past participle and the auxiliary. */
 function isComplete(table: StoredTable): boolean {
-  const has = (tags: string) => table.inflections.some((i) => i.tags.join('|') === tags && i.forms.length > 0);
-  return has('1|s|pres|ind') || has('3|s|pres|ind') ? has('past|part') && has('aux') : false;
+  return hasForms(table, '3|s|pres|ind', 'past|part', 'aux');
 }
 
 export const italianPractice: PracticeLanguage = {
@@ -22,9 +21,10 @@ export const italianPractice: PracticeLanguage = {
   ready: true,
   verbs: PRACTICE_VERBS,
   keyVerbs: KEY_VERBS,
-  savedTable: savedTables(saved, 'it', 'it'),
+  // A chunk of its own, downloaded when the language is first opened.
+  ...savedTables(() => import('./data/verbTables.json?raw'), 'it', 'it'),
   lookup: practiceLookup,
-  buildSheet,
+  layout: conjugationLayout,
   // The page the table was read from: chiamarsi has its own; alzarsi is built from alzare's.
   sourcePage: (table) => table.meta.page ?? table.lemma,
   kindOf,

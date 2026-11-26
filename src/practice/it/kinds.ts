@@ -1,6 +1,6 @@
 import type { InflectionTable } from '../../core/types';
+import { plainVerb } from '../../languages/it/verb/reflexive';
 import type { VerbKind } from '../types';
-import { plainVerb } from './reflexive';
 
 /**
  * How regular an Italian verb is. Wiktionary's table says when a verb is

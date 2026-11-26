@@ -7,6 +7,7 @@ import { pageUrl } from '../wiktionary/client';
 import { isCorrect } from './answers';
 import { getPracticeLanguage, PRACTICE_LANGUAGES } from './languages';
 import { randomVerb, verbWeights } from './random';
+import { buildSheet } from './sheet';
 import { homeHref, usePracticeRoute, verbHref } from './route';
 import type { Blank, Exercise, PracticeLanguage, PracticeResult, Sheet } from './types';
 
@@ -49,20 +50,46 @@ function usePracticeLookup(language: PracticeLanguage, word: string, attempt: nu
   return state;
 }
 
+/**
+ * Loads the language's saved tables, which come in a chunk of their own.
+ * True once they are there, or once loading failed (offline before the
+ * language was ever opened): verbs are then looked up on Wiktionary.
+ */
+function useSavedTables(language: PracticeLanguage): boolean {
+  const [settled, setSettled] = useState<PracticeLanguage | null>(null);
+  useEffect(() => {
+    if (!language.ready) return;
+    let current = true;
+    const settle = () => {
+      if (current) setSettled(language);
+    };
+    language.loadSaved().then(settle, (err: unknown) => {
+      console.error(err);
+      settle();
+    });
+    return () => {
+      current = false;
+    };
+  }, [language]);
+  return settled === language;
+}
+
 export function PracticePage() {
   const { language, word } = usePracticeRoute();
   const [attempt, setAttempt] = useState(0);
-  // Verbs on the practice list come with the page and work offline; any
-  // other verb is looked up on Wiktionary.
-  const saved = useMemo(() => language.savedTable(word), [language, word]);
+  const loaded = useSavedTables(language);
+  // Verbs on the practice list have their tables saved with the page and
+  // work offline; any other verb is looked up on Wiktionary.
+  const saved = useMemo(() => (loaded ? language.savedTable(word) : undefined), [language, word, loaded]);
   // A language not ready yet only lists its verbs; its other pages stay empty.
   const { ready } = language;
-  const state = usePracticeLookup(language, saved || !ready ? '' : word, attempt);
+  const state = usePracticeLookup(language, saved || !ready || !loaded ? '' : word, attempt);
   const table = saved ?? (state.status === 'ok' ? state.table : undefined);
-  const sheet = useMemo(() => (table ? language.buildSheet(table) : undefined), [language, table]);
+  const sheet = useMemo(() => (table ? buildSheet(language.layout(table)) : undefined), [language, table]);
   // The Wiktionary page the table comes from.
   const source = saved ? language.sourcePage(saved) : state.status === 'ok' ? state.page : undefined;
-  const weight = useMemo(() => verbWeights(language), [language]);
+  // Judged from the saved tables: worked out again once they are loaded.
+  const weight = useMemo(() => verbWeights(language), [language, loaded]);
 
   useEffect(() => {
     document.title = word ? `${word} – Conjugation Practice` : 'Conjugation Practice';
@@ -110,6 +137,11 @@ export function PracticePage() {
 
       <main>
         {!word && <Home language={language} />}
+        {word && ready && !loaded && (
+          <p className="status" role="status">
+            Loading…
+          </p>
+        )}
         {state.status === 'loading' && (
           <p className="status" role="status">
             Looking up <b>{state.query}</b>…

@@ -1,6 +1,6 @@
 import type { InflectionTable } from '../../core/types';
+import { plainVerb } from '../../languages/de/verb/reflexive';
 import type { VerbKind } from '../types';
-import { plainVerb } from './reflexive';
 
 /**
  * How regular a German verb is, from the class Wiktionary gives it: a weak

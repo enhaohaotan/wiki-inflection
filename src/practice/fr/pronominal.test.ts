@@ -3,10 +3,13 @@ import { resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { InflectionTable } from '../../core/types';
 import { french } from '../../languages/fr';
+import { conjugationLayout } from '../../languages/fr/verb/conjugation';
 import { findLanguageSection, parsePage } from '../../wiktionary/page';
+import { buildSheet as sheetOf } from '../sheet';
 import { practiceLookup } from './lookup';
 import { pronominalTable } from './pronominal';
-import { buildSheet } from './sheet';
+
+const buildSheet = (table: InflectionTable) => sheetOf(conjugationLayout(table));
 
 const FIXTURES = resolve(process.cwd(), 'test/fixtures');
 

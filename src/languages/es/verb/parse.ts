@@ -1,5 +1,6 @@
 import type { Inflection, InflectionTable } from '../../../core/types';
 import { cleanText } from '../../../wiktionary/page';
+import { label, PERSONS, verbTable, type Person } from '../../verbTables';
 
 /**
  * Extracts Spanish verb conjugation tables from the Spanish section of a page.
@@ -18,7 +19,7 @@ const FINITE_TAGS: Record<string, Record<string, string[]>> = {
     present: ['pres', 'ind'],
     imperfect: ['impf', 'ind'],
     preterite: ['pret'],
-    future: ['fut', 'ind'],
+    future: ['fut'],
     conditional: ['cond'],
   },
   subjunctive: {
@@ -32,25 +33,10 @@ const FINITE_TAGS: Record<string, Record<string, string[]>> = {
   },
 };
 
-const PERSONS: ([string, string] | null)[] = [
-  ['1', 's'],
-  ['2', 's'],
-  ['3', 's'],
-  ['1', 'p'],
-  ['2', 'p'],
-  ['3', 'p'],
-];
-
 /** The imperative's columns: none for "yo", then tú, usted, nosotros, vosotros, ustedes. */
-const IMPERATIVE_PERSONS: ([string, string] | null)[] = [null, ['2', 's'], ['3', 's'], ['1', 'p'], ['2', 'p'], ['3', 'p']];
+const IMPERATIVE_PERSONS: (Person | null)[] = [null, ...PERSONS.slice(1)];
 
 const MOOD_CLASS = /\broa-(indicative|subjunctive|imperative)-left-rail\b/;
-
-function label(cell: Element): string {
-  const clone = cell.cloneNode(true) as Element;
-  clone.querySelectorAll('sup').forEach((el) => el.remove());
-  return cleanText(clone).toLowerCase();
-}
 
 /** The forms in a cell, without the voseo ones. */
 function cellForms(cell: Element): string[] {
@@ -96,8 +82,8 @@ function parseInflections(table: Element): Inflection[] {
       else if (name === 'singular' || name === 'plural') participleRow = name;
       if (participleRow && tds.length === 2) {
         const num = participleRow === 'singular' ? 's' : 'p';
-        add(['pp', 'm', num], cellForms(tds[0]!));
-        add(['pp', 'f', num], cellForms(tds[1]!));
+        add(['past', 'part', 'm', num], cellForms(tds[0]!));
+        add(['past', 'part', 'f', num], cellForms(tds[1]!));
         participleRow = '';
       }
       continue;
@@ -114,33 +100,10 @@ function parseInflections(table: Element): Inflection[] {
   return result;
 }
 
-/** "Conjugation of sentir (e-ie-i alternation) (See Appendix:Spanish verbs)" -> "e-ie-i alternation". */
-function verbClass(frame: Element | null): string {
-  const head = cleanText(frame?.querySelector('.NavHead'));
-  return /\(((?!See )[^)]*)\)/.exec(head)?.[1] ?? '';
-}
-
 export function parseSpanishVerbTables(section: Element, pageTitle: string): InflectionTable[] {
-  const tables: InflectionTable[] = [];
-  for (const table of Array.from(section.querySelectorAll(TABLE_SELECTOR))) {
-    const inflections = parseInflections(table);
-    if (!inflections.some((i) => i.tags.includes('pres') && i.tags.includes('ind'))) continue;
-
-    const lemma = inflections.find((i) => i.tags[0] === 'inf')?.forms[0] ?? pageTitle;
-    const meta: Record<string, string> = { page: pageTitle };
-    const verbClassNote = verbClass(table.closest('.NavFrame'));
-    if (verbClassNote) meta.class = verbClassNote;
-
-    tables.push({
-      lang: 'es',
-      pos: 'verb',
-      lemma,
-      title: `Conjugation of ${lemma}`,
-      inflections,
-      periphrastic: [],
-      notes: [],
-      meta,
-    });
-  }
-  return tables;
+  return Array.from(section.querySelectorAll(TABLE_SELECTOR)).flatMap((table) => {
+    const heading = cleanText(table.closest('.NavFrame')?.querySelector('.NavHead'));
+    const isPresent = (i: Inflection) => i.tags.includes('pres') && i.tags.includes('ind');
+    return verbTable('es', parseInflections(table), pageTitle, heading, isPresent) ?? [];
+  });
 }

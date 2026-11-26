@@ -44,7 +44,9 @@ describe('every practice language', () => {
         expect(language.keyVerbs.filter((v) => !language.verbs.includes(v))).toEqual([]);
       });
 
-      it.skipIf(!language.ready)('has a saved, complete table for every verb on its list', () => {
+      it.skipIf(!language.ready)('has a saved, complete table for every verb on its list', async () => {
+        expect(language.savedTable(language.verbs[0]!)).toBeUndefined();
+        await language.loadSaved();
         const missing = language.verbs.filter((v) => !language.savedTable(v));
         expect(missing).toEqual([]);
         const incomplete = language.verbs.filter((v) => {

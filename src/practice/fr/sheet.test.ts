@@ -1,17 +1,21 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import type { InflectionTable } from '../../core/types';
 import { french } from '../../languages/fr';
+import { conjugationLayout } from '../../languages/fr/verb/conjugation';
+import { expandForm } from '../../languages/fr/verb/notation';
 import { findLanguageSection, parsePage } from '../../wiktionary/page';
-import { expandForm, isCorrect as isCorrectIn } from '../answers';
+import { isCorrect as isCorrectIn } from '../answers';
 import { randomVerb } from '../random';
 import { fromStored, storeTable } from '../saved';
+import { buildSheet as sheetOf } from '../sheet';
 import type { Blank, Sheet } from '../types';
 import { lacksAgreement } from '.';
-import { buildSheet } from './sheet';
-
-const isCorrect = (answer: string, blank: Blank) => isCorrectIn(answer, blank, 'fr');
 import { PRACTICE_VERBS } from './verbs';
+
+const buildSheet = (table: InflectionTable) => sheetOf(conjugationLayout(table));
+const isCorrect = (answer: string, blank: Blank) => isCorrectIn(answer, blank, 'fr');
 
 function section(fixture: string): Element | null {
   try {

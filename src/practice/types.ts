@@ -1,11 +1,12 @@
 import type { InflectionTable } from '../core/types';
 import type { LookupResult } from '../features/lookup/lookup';
+import type { ConjugationLayout } from '../languages/conjugation';
 import type { StoredTable } from './saved';
 
 /**
  * A conjugation turned into fill-in-the-blank exercises: one blank per
- * person of every tense. The same shape for every language; each language
- * builds it from its own tables (see PracticeLanguage.buildSheet).
+ * person of every tense, built the same way for every language from the
+ * layout each language makes of its tables (see sheet.ts).
  */
 
 export interface Blank {
@@ -84,12 +85,14 @@ export interface PracticeLanguage {
   verbs: readonly string[];
   /** Verbs shown first on the home page, numbered, in learning order. Each is on `verbs` too. */
   keyVerbs: readonly string[];
-  /** The saved table of a verb on the list, however it is typed; undefined for other verbs. */
+  /** Loads the saved tables of the verbs on the list; the page waits for it before showing one. */
+  loadSaved(): Promise<void>;
+  /** The saved table of a verb on the list, however it is typed; undefined for other verbs, or before loadSaved. */
   savedTable(verb: string): InflectionTable | undefined;
   /** Looks a verb up on Wiktionary and picks the table to practise. */
   lookup(verb: string, signal?: AbortSignal): Promise<PracticeResult>;
-  /** Turns a table into exercises. */
-  buildSheet(table: InflectionTable): Sheet;
+  /** Lays a table out in the layout shared by every language; the page turns it into exercises. */
+  layout(table: InflectionTable): ConjugationLayout;
   /** The Wiktionary page to credit for a saved table. */
   sourcePage(table: InflectionTable): string;
   /** How regular a verb is, from its table (or its infinitive when there is none). */
