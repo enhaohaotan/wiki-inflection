@@ -111,6 +111,12 @@ a {
   cursor: pointer;
 }
 
+/* the same width for every code (IT is narrower than DE), so the search box
+   does not move when the language changes */
+.lang-current {
+  min-width: 1.6em;
+}
+
 .lang-button svg {
   transition: transform 0.15s;
 }

@@ -4,16 +4,17 @@ import { LanguagePicker, type LanguageOption } from './LanguagePicker';
 interface Props {
   value: string;
   inputLang: string;
-  languages: readonly LanguageOption[];
+  /** With more than one, a language picker shows beside the box. */
+  languages?: readonly LanguageOption[];
   onSearch(word: string): void;
-  onLanguageChange(code: string): void;
+  onLanguageChange?(code: string): void;
   placeholder?: string;
 }
 
 export function SearchBar({
   value,
   inputLang,
-  languages,
+  languages = [],
   onSearch,
   onLanguageChange,
   placeholder = 'Look up inflections',
@@ -33,7 +34,7 @@ export function SearchBar({
 
   return (
     <form className="search" role="search" onSubmit={submit}>
-      {languages.length > 1 && (
+      {languages.length > 1 && onLanguageChange && (
         <LanguagePicker value={inputLang} languages={languages} onChange={onLanguageChange} />
       )}
       <div className="field">

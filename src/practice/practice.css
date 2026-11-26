@@ -235,6 +235,16 @@
   border-color: var(--accent);
 }
 
+/* ---- the language's flag colours, a thin strip along the top ---- */
+
+.topbar .flag {
+  position: absolute;
+  top: env(safe-area-inset-top);
+  right: 0;
+  left: 0;
+  height: 4px;
+}
+
 /* ---- home: the verbs on the practice list, one per line ---- */
 
 .verb-list {

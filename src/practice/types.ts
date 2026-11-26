@@ -67,6 +67,12 @@ export interface PracticeLanguage {
   code: string;
   /** Name in English, e.g. "French". */
   name: string;
+  /** Name in the language itself, shown in the language picker, e.g. "Français". */
+  ownName: string;
+  /** The word "verb" in the language, shown in the empty search box, e.g. "verbe". */
+  placeholder: string;
+  /** The flag's colours in equal parts, left to right, for the strip along the top, e.g. ['#000091', '#ffffff', '#e1000f']. */
+  flag: readonly string[];
   /** BCP 47 locale for case folding, e.g. "fr". */
   locale: string;
   /** The verbs on the practice list, in dictionary order; their tables are saved with the page. */

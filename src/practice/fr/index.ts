@@ -25,6 +25,9 @@ export function lacksAgreement(table: Pick<StoredTable, 'inflections' | 'periphr
 export const frenchPractice: PracticeLanguage = {
   code: 'fr',
   name: 'French',
+  ownName: 'Français',
+  placeholder: 'verbe',
+  flag: ['#000091', '#ffffff', '#e1000f'],
   locale: 'fr',
   verbs: PRACTICE_VERBS,
   keyVerbs: KEY_VERBS,

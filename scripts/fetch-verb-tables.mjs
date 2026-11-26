@@ -31,6 +31,10 @@ const server = await createServer({
 
 /** Fetches and saves one language's tables. */
 async function fetchLanguage(language, storeTable) {
+  if (language.verbs.length === 0) {
+    console.log(`${language.name}: no verbs yet, skipped`);
+    return;
+  }
   const dir = new URL(`../src/practice/${language.code}/data/`, import.meta.url);
   const out = new URL('verbTables.json', dir);
   mkdirSync(dir, { recursive: true });

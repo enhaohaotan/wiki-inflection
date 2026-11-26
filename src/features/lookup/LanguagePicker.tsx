@@ -99,7 +99,7 @@ export function LanguagePicker({ value, languages, onChange }: Props) {
         onClick={() => (open ? close(false) : openList())}
         onKeyDown={onButtonKey}
       >
-        {value.toUpperCase()}
+        <span className="lang-current">{value.toUpperCase()}</span>
         <svg viewBox="0 0 10 6" width="8" height="5" aria-hidden="true" className={open ? 'flip' : undefined}>
           <path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.5" />
         </svg>

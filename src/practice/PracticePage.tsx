@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { LanguagePicker } from '../features/lookup/LanguagePicker';
 import { SearchBar } from '../features/lookup/SearchBar';
 import { Headword } from '../ui/Headword';
 import { JumpNav } from '../ui/JumpNav';
 import { pageUrl } from '../wiktionary/client';
 import { isCorrect } from './answers';
-import { PRACTICE_LANGUAGES } from './languages';
+import { getPracticeLanguage, PRACTICE_LANGUAGES } from './languages';
 import { randomVerb, verbWeights } from './random';
 import { homeHref, usePracticeRoute, verbHref } from './route';
 import type { Blank, Exercise, PracticeLanguage, PracticeResult, Sheet } from './types';
@@ -17,6 +18,9 @@ import type { Blank, Exercise, PracticeLanguage, PracticeResult, Sheet } from '.
  * The address holds the language and the verb: verbs.html#/fr/aller, served
  * as /verbs#/fr/aller.
  */
+
+/** The picker lists each language in its own name: Français, Deutsch. */
+const PICKER_LANGUAGES = PRACTICE_LANGUAGES.map((l) => ({ code: l.code, name: l.ownName }));
 
 type PracticeState = { status: 'idle' } | { status: 'loading'; query: string } | PracticeResult;
 
@@ -51,7 +55,9 @@ export function PracticePage() {
   // Verbs on the practice list come with the page and work offline; any
   // other verb is looked up on Wiktionary.
   const saved = useMemo(() => language.savedTable(word), [language, word]);
-  const state = usePracticeLookup(language, saved ? '' : word, attempt);
+  // A language without verbs is not ready yet: its pages stay empty.
+  const ready = language.verbs.length > 0;
+  const state = usePracticeLookup(language, saved || !ready ? '' : word, attempt);
   const table = saved ?? (state.status === 'ok' ? state.table : undefined);
   const sheet = useMemo(() => (table ? language.buildSheet(table) : undefined), [language, table]);
   // The Wiktionary page the table comes from.
@@ -67,32 +73,43 @@ export function PracticePage() {
   return (
     <>
       <header className="topbar">
+        <div className="flag" aria-hidden="true" style={{ background: stripes(language.flag) }} />
         <div className="topbar-inner">
-          <a className="home" href={homeHref(language)} title="All verbs">
-            Home
-          </a>
-          {/* The language picker shows once there is more than one language. */}
+          {/* On the home page, where Home would lead nowhere, the language picker takes its place. */}
+          {!word && PRACTICE_LANGUAGES.length > 1 ? (
+            <LanguagePicker
+              value={language.code}
+              languages={PICKER_LANGUAGES}
+              onChange={(code) => (window.location.hash = homeHref(getPracticeLanguage(code)!))}
+            />
+          ) : (
+            <a className="home" href={homeHref(language)} title="All verbs">
+              Home
+            </a>
+          )}
           <SearchBar
             value={word}
             inputLang={language.code}
-            languages={PRACTICE_LANGUAGES}
-            placeholder="Verb to practise"
+            placeholder={language.placeholder}
             onSearch={(w) => (window.location.hash = verbHref(language, w))}
-            onLanguageChange={(code) => (window.location.hash = `#/${code}`)}
           />
-          <button
-            type="button"
-            className="random"
-            title="Random verb"
-            onClick={() => (window.location.hash = verbHref(language, randomVerb(language.verbs, word, Math.random, weight)))}
-          >
-            Random
-          </button>
+          {ready && (
+            <button
+              type="button"
+              className="random"
+              title="Random verb"
+              onClick={() =>
+                (window.location.hash = verbHref(language, randomVerb(language.verbs, word, Math.random, weight)))
+              }
+            >
+              Random
+            </button>
+          )}
         </div>
       </header>
 
       <main>
-        {!word && <Home language={language} />}
+        {!word && ready && <Home language={language} />}
         {state.status === 'loading' && (
           <p className="status" role="status">
             Looking up <b>{state.query}</b>…
@@ -124,6 +141,13 @@ export function PracticePage() {
 }
 
 /** The home page: every verb on the language's practice list, each opening its exercises. */
+/** Hard-edged bands of equal width, left to right. */
+function stripes(colors: readonly string[]): string {
+  const width = 100 / colors.length;
+  const bands = colors.map((c, i) => `${c} ${i * width}% ${(i + 1) * width}%`);
+  return `linear-gradient(to right, ${bands.join(', ')})`;
+}
+
 function Home({ language }: { language: PracticeLanguage }) {
   const { keyVerbs, verbs } = language;
   return (

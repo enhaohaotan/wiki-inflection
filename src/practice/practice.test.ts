@@ -54,7 +54,7 @@ describe('every practice language', () => {
         expect(incomplete).toEqual([]);
       });
 
-      it('can always pick a different verb at random', () => {
+      it.skipIf(language.verbs.length === 0)('can always pick a different verb at random', () => {
         const [first] = language.verbs;
         expect(randomVerb(language.verbs, first, () => 0.5)).not.toBe(first);
       });
