@@ -1,7 +1,6 @@
 /**
- * The Spanish verbs to practise. For now they are only listed on the home
- * page (../upcoming.ts): Spanish cannot be practised until its Wiktionary
- * conjugation tables can be parsed.
+ * The verbs the Random button picks from, and the ones whose tables are saved
+ * with the page for offline practice (see scripts/fetch-verb-tables.mjs).
  *
  * 200 core verbs of everyday Spanish, for practising conjugation. Chosen by
  * judgement, then checked against how often their forms come up in film

@@ -1,7 +1,8 @@
+import { spanishPractice } from './es';
 import { frenchPractice } from './fr';
 import { italianPractice } from './it';
 import type { PracticeLanguage } from './types';
-import { germanPractice, spanishPractice } from './upcoming';
+import { germanPractice } from './upcoming';
 
 /**
  * The languages that can be practised, in the order of the language picker.

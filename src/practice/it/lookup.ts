@@ -27,6 +27,8 @@ export async function practiceLookup(verb: string, signal?: AbortSignal): Promis
   if (isReflexive(verb)) {
     const plain = plainVerb(verb);
     const plainResult = await lookup(italian, plain, signal);
+    // Rate-limited or offline: say so, rather than that there is no table.
+    if (plainResult.status === 'error') return plainResult;
     const plainTable = tableIn(plainResult, plain);
     if (plainTable) {
       return { status: 'ok', table: reflexiveTable(plainTable, verb), page: plainTable.meta.page ?? plain };
