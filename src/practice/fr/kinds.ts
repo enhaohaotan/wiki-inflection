@@ -1,22 +1,12 @@
-import type { InflectionTable } from '../core/types';
-import { savedTable } from './savedTables';
+import type { InflectionTable } from '../../core/types';
+import type { VerbKind } from '../types';
 
 /**
- * How often the Random button picks a verb, by how much its conjugation has
- * to be learned: a regular verb follows its group's endings, so practising
- * one more teaches little; an irregular one has to be learned form by form.
+ * How regular a French verb is, judged from its table: a regular -er or
+ * second-group verb has only its group's endings; one whose forms follow the
+ * endings but change spelling (mangeons, appelle) has a spelling change;
+ * anything else is irregular.
  */
-export type VerbKind = 'regular' | 'spelling' | 'irregular';
-
-/** Relative chance of being picked. */
-export const WEIGHTS: Record<VerbKind, number> = {
-  /** parler, finir: the group's endings and nothing else. */
-  regular: 1,
-  /** manger (mangeons), appeler (appelle), préférer (préfère): regular endings, changing spelling. */
-  spelling: 2,
-  /** être, aller, prendre, venir... */
-  irregular: 4,
-};
 
 /** -er verbs whose forms are not the -er endings at all. */
 const IRREGULAR_ER = ['aller', 'envoyer'];
@@ -62,16 +52,4 @@ export function kindOf(verb: string, table: InflectionTable | undefined): VerbKi
   // Second group: finir -> finissons.
   if (infinitive.endsWith('ir') && forms(table, ['1', 'p', 'pres', 'indc'])[0]?.endsWith('issons')) return 'regular';
   return 'irregular';
-}
-
-const cache = new Map<string, number>();
-
-/** The Random button's weight for a verb on the list, judged from its saved table. */
-export function verbWeight(verb: string): number {
-  let weight = cache.get(verb);
-  if (weight === undefined) {
-    weight = WEIGHTS[kindOf(verb, savedTable(verb))];
-    cache.set(verb, weight);
-  }
-  return weight;
 }

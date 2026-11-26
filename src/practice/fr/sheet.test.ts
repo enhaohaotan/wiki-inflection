@@ -1,11 +1,17 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { french } from '../languages/fr';
-import { findLanguageSection, parsePage } from '../wiktionary/page';
-import { buildSheet, expandForm, isCorrect, type Blank, type Sheet } from './sheet';
-import { PRACTICE_VERBS, randomVerb } from './verbs';
-import { fromStored, lacksAgreement, storeTable } from './savedTables';
+import { french } from '../../languages/fr';
+import { findLanguageSection, parsePage } from '../../wiktionary/page';
+import { expandForm, isCorrect as isCorrectIn } from '../answers';
+import { randomVerb } from '../random';
+import { fromStored, storeTable } from '../saved';
+import type { Blank, Sheet } from '../types';
+import { lacksAgreement } from '.';
+import { buildSheet } from './sheet';
+
+const isCorrect = (answer: string, blank: Blank) => isCorrectIn(answer, blank, 'fr');
+import { PRACTICE_VERBS } from './verbs';
 
 function section(fixture: string): Element | null {
   try {
@@ -29,7 +35,7 @@ function blank(sheet: Sheet, mood: string, tense: string, index: number): Blank 
   const exercise = sheet.sections
     .find((s) => s.id === mood)
     ?.pairs.flat()
-    .find((e) => e.fr === tense);
+    .find((e) => e.name === tense);
   const found = exercise?.blanks[index];
   if (!found) throw new Error(`no ${mood} ${tense} ${index}`);
   return found;
@@ -62,7 +68,7 @@ describe('buildSheet', () => {
     expect(sheet.sections.map((s) => s.id)).toEqual(['indicatif', 'conditionnel', 'subjonctif', 'imperatif', 'participe']);
 
     const present = sheet.sections[0]!.pairs[0]!;
-    expect(present.map((e) => e.fr)).toEqual(['Présent', 'Passé composé']);
+    expect(present.map((e) => e.name)).toEqual(['Présent', 'Passé composé']);
     expect(present[0]!.blanks.map((b) => b.label)).toEqual(['je', 'tu', 'il/elle/on', 'nous', 'vous', 'ils/elles']);
     expect(blank(sheet, 'subjonctif', 'Présent', 2).label).toBe('qu’il/elle/on');
     expect(blank(sheet, 'imperatif', 'Présent', 0).label).toBe('(tu)');
@@ -109,9 +115,9 @@ describe('buildSheet', () => {
 describe('randomVerb', () => {
   it('never picks the verb already shown', () => {
     const [first, second] = PRACTICE_VERBS;
-    expect(randomVerb(first, () => 0)).toBe(second);
-    expect(randomVerb(second, () => 0)).toBe(first);
-    expect(randomVerb(first, () => 0.9999)).toBe(PRACTICE_VERBS.at(-1));
+    expect(randomVerb(PRACTICE_VERBS, first, () => 0)).toBe(second);
+    expect(randomVerb(PRACTICE_VERBS, second, () => 0)).toBe(first);
+    expect(randomVerb(PRACTICE_VERBS, first, () => 0.9999)).toBe(PRACTICE_VERBS.at(-1));
     expect(PRACTICE_VERBS).not.toContain('gésir');
     expect(new Set(PRACTICE_VERBS).size).toBe(PRACTICE_VERBS.length);
   });
@@ -133,7 +139,7 @@ describe('saved tables', () => {
     for (const verb of ['aller', 'passer', 'asseoir', 'pleuvoir']) {
       const entry = await french.enrich!(french.parse(section(verb)!, verb), async (t) => section(`pp-${t}`), async () => null);
       const table = entry.tables[0]!;
-      const restored = fromStored(JSON.parse(JSON.stringify(storeTable(table))));
+      const restored = fromStored(JSON.parse(JSON.stringify(storeTable(table))), 'fr');
       expect(buildSheet(restored), verb).toEqual(buildSheet(table));
     }
   });

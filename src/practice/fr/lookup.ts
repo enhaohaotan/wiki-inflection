@@ -1,13 +1,14 @@
-import type { InflectionTable } from '../core/types';
-import { lookup, type LookupResult } from '../features/lookup/lookup';
-import { french } from '../languages/fr';
+import type { InflectionTable } from '../../core/types';
+import { lookup, type LookupResult } from '../../features/lookup/lookup';
+import { french } from '../../languages/fr';
+import { mainTable } from '../../languages/fr/verb/layout';
+import type { PracticeResult } from '../types';
 import { isPronominal, plainVerb, pronominalTable } from './pronominal';
-import { practiceTable } from './savedTables';
 
-export type PracticeResult =
-  /** `page`: the Wiktionary page the table comes from. */
-  | { status: 'ok'; table: InflectionTable; page: string }
-  | Exclude<LookupResult, { status: 'ok' }>;
+/** The table a lookup result is practised with: after a reverse lookup (vais), the verb's own table. */
+export function practiceTable(result: Extract<LookupResult, { status: 'ok' }>): InflectionTable | undefined {
+  return result.match ? mainTable(result.entry, result.match.form) : result.entry.tables[0];
+}
 
 /** The table of `verb` in what Wiktionary returned, if it has one. */
 function tableIn(result: LookupResult, verb: string): InflectionTable | undefined {

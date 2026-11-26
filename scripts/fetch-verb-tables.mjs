@@ -1,20 +1,22 @@
 /**
- * Fetches the conjugation table of every verb on the practice list from
- * Wiktionary and saves it to src/practice/data/verbTables.json, so the
- * practice page works offline for those verbs.
+ * Fetches the conjugation table of every verb on each practice language's
+ * list from Wiktionary and saves it to src/practice/<code>/data/verbTables.json,
+ * so the practice page works offline for those verbs.
  *
- *   npm run verbs:fetch              fetch only verbs not saved yet
+ *   npm run verbs:fetch              every language, only verbs not saved yet
+ *   npm run verbs:fetch -- fr        only French
  *   npm run verbs:fetch -- --all     fetch every verb again
  *
  * Runs the page's own lookup and parsing code (through Vite), so a saved
  * table is exactly what the page would get from the API.
  */
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { JSDOM } from 'jsdom';
 import { createServer } from 'vite';
 
-const OUT = new URL('../src/practice/data/verbTables.json', import.meta.url);
-const all = process.argv.includes('--all');
+const args = process.argv.slice(2);
+const all = args.includes('--all');
+const codes = args.filter((a) => !a.startsWith('--'));
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // The parsers use the browser's DOMParser.
@@ -27,25 +29,26 @@ const server = await createServer({
   server: { middlewareMode: true, hmr: false, ws: false },
 });
 
-try {
-  const { practiceLookup } = await server.ssrLoadModule('/src/practice/practiceLookup.ts');
-  const { PRACTICE_VERBS } = await server.ssrLoadModule('/src/practice/verbs.ts');
-  const { lacksAgreement, storeTable } = await server.ssrLoadModule('/src/practice/savedTables.ts');
+/** Fetches and saves one language's tables. */
+async function fetchLanguage(language, storeTable) {
+  const dir = new URL(`../src/practice/${language.code}/data/`, import.meta.url);
+  const out = new URL('verbTables.json', dir);
+  mkdirSync(dir, { recursive: true });
 
-  const previous = existsSync(OUT) && !all ? JSON.parse(readFileSync(OUT, 'utf8')) : { tables: {}, missing: {} };
+  const previous = existsSync(out) && !all ? JSON.parse(readFileSync(out, 'utf8')) : { tables: {}, missing: {} };
   const tables = { ...previous.tables };
   const missing = {};
-  const verbs = PRACTICE_VERBS;
+  const verbs = language.verbs;
   // Also again any verb saved as another verb's table (se coucher saved as
-  // coucher), or saved without its agreed participles.
-  const todo = verbs.filter((v) => tables[v]?.lemma !== v || lacksAgreement(tables[v]));
-  console.log(`${verbs.length} verbs, ${todo.length} to fetch`);
+  // coucher), or saved incomplete (a French table without its agreed participles).
+  const todo = verbs.filter((v) => tables[v]?.lemma !== v || !language.isComplete(tables[v]));
+  console.log(`${language.name}: ${verbs.length} verbs, ${todo.length} to fetch`);
 
   const save = () => {
     // Keep only verbs still on the list, in list order.
     const ordered = Object.fromEntries(verbs.filter((v) => tables[v]).map((v) => [v, tables[v]]));
     const file = { fetched: new Date().toISOString().slice(0, 10), tables: ordered, missing };
-    writeFileSync(OUT, `${JSON.stringify(file)}\n`);
+    writeFileSync(out, `${JSON.stringify(file)}\n`);
     return Object.keys(ordered).length;
   };
 
@@ -53,12 +56,12 @@ try {
     let result;
     // Wiktionary rate-limits bursts: wait and try again.
     for (let attempt = 0; attempt < 5; attempt++) {
-      result = await practiceLookup(verb);
-      // A table without its agreed participles was cut short by the rate limit too.
-      const incomplete = result.status === 'ok' && lacksAgreement(result.table);
+      result = await language.lookup(verb);
+      // An incomplete table was cut short by the rate limit too.
+      const incomplete = result.status === 'ok' && !language.isComplete(storeTable(result.table));
       if (result.status !== 'error' && !incomplete) break;
       const wait = (result.retryAfter ?? 10 * (attempt + 1)) * 1000;
-      console.log(`  ${verb}: ${incomplete ? 'participle forms missing' : result.kind}, retrying in ${wait / 1000}s`);
+      console.log(`  ${verb}: ${incomplete ? 'incomplete table' : result.kind}, retrying in ${wait / 1000}s`);
       await sleep(wait);
     }
 
@@ -78,7 +81,17 @@ try {
   }
 
   const saved = save();
-  console.log(`saved ${saved} tables; missing: ${Object.keys(missing).join(', ') || 'none'}`);
+  console.log(`${language.name}: saved ${saved} tables; missing: ${Object.keys(missing).join(', ') || 'none'}`);
+}
+
+try {
+  const { PRACTICE_LANGUAGES } = await server.ssrLoadModule('/src/practice/languages.ts');
+  const { storeTable } = await server.ssrLoadModule('/src/practice/saved.ts');
+  const unknown = codes.filter((c) => !PRACTICE_LANGUAGES.some((l) => l.code === c));
+  if (unknown.length > 0) throw new Error(`No practice language ${unknown.join(', ')}`);
+  for (const language of PRACTICE_LANGUAGES) {
+    if (codes.length === 0 || codes.includes(language.code)) await fetchLanguage(language, storeTable);
+  }
 } finally {
   await server.close();
 }

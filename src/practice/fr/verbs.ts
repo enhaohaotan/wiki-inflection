@@ -63,22 +63,3 @@ export const KEY_VERBS: readonly string[] = [
   'dire', 'voir', 'mettre', 'partir', 'croire',
   "s'appeler",
 ];
-
-/**
- * A verb from the list, other than `current` so the button always changes the
- * page. `weight` sets how likely each verb is (see weights.ts).
- */
-export function randomVerb(
-  current?: string,
-  random: () => number = Math.random,
-  weight: (verb: string) => number = () => 1,
-): string {
-  const choices = PRACTICE_VERBS.filter((v) => v !== current);
-  const weights = choices.map(weight);
-  let left = random() * weights.reduce((sum, w) => sum + w, 0);
-  for (const [i, w] of weights.entries()) {
-    left -= w;
-    if (left < 0) return choices[i]!;
-  }
-  return choices[choices.length - 1]!;
-}

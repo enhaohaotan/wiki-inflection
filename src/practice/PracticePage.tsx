@@ -3,33 +3,25 @@ import { SearchBar } from '../features/lookup/SearchBar';
 import { Headword } from '../ui/Headword';
 import { JumpNav } from '../ui/JumpNav';
 import { pageUrl } from '../wiktionary/client';
-import { practiceLookup, type PracticeResult } from './practiceLookup';
-import { plainVerb } from './pronominal';
-import { savedTable } from './savedTables';
-import { buildSheet, isCorrect, type Blank, type Exercise, type Sheet } from './sheet';
-import { KEY_VERBS, PRACTICE_VERBS, randomVerb } from './verbs';
-import { verbWeight } from './weights';
+import { isCorrect } from './answers';
+import { PRACTICE_LANGUAGES } from './languages';
+import { randomVerb, verbWeights } from './random';
+import { homeHref, usePracticeRoute, verbHref } from './route';
+import type { Blank, Exercise, PracticeLanguage, PracticeResult, Sheet } from './types';
 
 /**
- * Conjugation practice: type a French verb, fill in its forms tense by
- * tense, then check what you filled in or compare with the answers.
- * Tables come from the same lookup (and the same cache) as the viewer.
- * The verb lives in the hash (verbs.html#aller, served as /verbs#aller) so it can be bookmarked.
+ * Conjugation practice: pick or type a verb, fill in its forms tense by
+ * tense, then check what you filled in or compare with the answers. Each
+ * language (./languages.ts) brings its verb list, its saved tables and how
+ * to turn a table into exercises; this page is the same for all of them.
+ * The address holds the language and the verb: verbs.html#/fr/aller, served
+ * as /verbs#/fr/aller.
  */
-
-function readHash(): string {
-  const raw = window.location.hash.replace(/^#\/?/, '');
-  try {
-    return decodeURIComponent(raw).trim();
-  } catch {
-    return raw.trim();
-  }
-}
 
 type PracticeState = { status: 'idle' } | { status: 'loading'; query: string } | PracticeResult;
 
 /** Looks `word` up whenever it changes; `attempt` forces a retry. */
-function usePracticeLookup(word: string, attempt: number): PracticeState {
+function usePracticeLookup(language: PracticeLanguage, word: string, attempt: number): PracticeState {
   const [state, setState] = useState<PracticeState>({ status: 'idle' });
   useEffect(() => {
     if (!word) {
@@ -38,7 +30,8 @@ function usePracticeLookup(word: string, attempt: number): PracticeState {
     }
     const controller = new AbortController();
     setState({ status: 'loading', query: word });
-    practiceLookup(word, controller.signal)
+    language
+      .lookup(word, controller.signal)
       .then((result) => {
         if (!controller.signal.aborted) setState(result);
       })
@@ -48,67 +41,50 @@ function usePracticeLookup(word: string, attempt: number): PracticeState {
         setState({ status: 'error', kind: 'http' });
       });
     return () => controller.abort();
-  }, [word, attempt]);
+  }, [language, word, attempt]);
   return state;
 }
 
-function useHashWord(): string {
-  const [word, setWord] = useState(readHash);
-  useEffect(() => {
-    const onChange = () => setWord(readHash());
-    window.addEventListener('hashchange', onChange);
-    return () => window.removeEventListener('hashchange', onChange);
-  }, []);
-  return word;
-}
-
-const SHORT_NAMES: Record<string, string> = {
-  indicatif: 'Ind.',
-  conditionnel: 'Cond.',
-  subjonctif: 'Subj.',
-  imperatif: 'Impér.',
-  participe: 'Part.',
-};
-
 export function PracticePage() {
-  const word = useHashWord();
+  const { language, word } = usePracticeRoute();
   const [attempt, setAttempt] = useState(0);
   // Verbs on the practice list come with the page and work offline; any
   // other verb is looked up on Wiktionary.
-  const saved = useMemo(() => savedTable(word), [word]);
-  const state = usePracticeLookup(saved ? '' : word, attempt);
+  const saved = useMemo(() => language.savedTable(word), [language, word]);
+  const state = usePracticeLookup(language, saved ? '' : word, attempt);
   const table = saved ?? (state.status === 'ok' ? state.table : undefined);
-  const sheet = useMemo(() => (table ? buildSheet(table) : undefined), [table]);
-  // The Wiktionary page the table comes from. A pronominal verb is credited
-  // to its plain verb (se lever -> lever), whose page its table is built from.
-  const source = saved ? plainVerb(saved.lemma) : state.status === 'ok' ? state.page : undefined;
+  const sheet = useMemo(() => (table ? language.buildSheet(table) : undefined), [language, table]);
+  // The Wiktionary page the table comes from.
+  const source = saved ? language.sourcePage(saved) : state.status === 'ok' ? state.page : undefined;
+  const weight = useMemo(() => verbWeights(language), [language]);
 
   useEffect(() => {
     document.title = word ? `${word} – Conjugation Practice` : 'Conjugation Practice';
     // A verb picked lower down the home page opens at its top.
     window.scrollTo(0, 0);
-  }, [word]);
+  }, [language, word]);
 
   return (
     <>
       <header className="topbar">
         <div className="topbar-inner">
-          <a className="home" href="#" title="All verbs">
+          <a className="home" href={homeHref(language)} title="All verbs">
             Home
           </a>
+          {/* The language picker shows once there is more than one language. */}
           <SearchBar
             value={word}
-            inputLang="fr"
-            languages={[]}
+            inputLang={language.code}
+            languages={PRACTICE_LANGUAGES}
             placeholder="Verb to practise"
-            onSearch={(w) => (window.location.hash = encodeURIComponent(w))}
-            onLanguageChange={() => {}}
+            onSearch={(w) => (window.location.hash = verbHref(language, w))}
+            onLanguageChange={(code) => (window.location.hash = `#/${code}`)}
           />
           <button
             type="button"
             className="random"
             title="Random verb"
-            onClick={() => (window.location.hash = encodeURIComponent(randomVerb(word, Math.random, verbWeight)))}
+            onClick={() => (window.location.hash = verbHref(language, randomVerb(language.verbs, word, Math.random, weight)))}
           >
             Random
           </button>
@@ -116,15 +92,15 @@ export function PracticePage() {
       </header>
 
       <main>
-        {!word && <Home />}
+        {!word && <Home language={language} />}
         {state.status === 'loading' && (
           <p className="status" role="status">
             Looking up <b>{state.query}</b>…
           </p>
         )}
         {/* A new table starts a fresh sheet. */}
-        {sheet && <Drill key={sheet.lemma} sheet={sheet} />}
-        <Problem state={state} onRetry={() => setAttempt((n) => n + 1)} />
+        {sheet && <Drill key={`${language.code}:${sheet.lemma}`} sheet={sheet} language={language} />}
+        <Problem state={state} language={language} onRetry={() => setAttempt((n) => n + 1)} />
       </main>
 
       <footer className="credits">
@@ -147,13 +123,14 @@ export function PracticePage() {
   );
 }
 
-/** The home page: every verb on the practice list, each opening its exercises. */
-function Home() {
+/** The home page: every verb on the language's practice list, each opening its exercises. */
+function Home({ language }: { language: PracticeLanguage }) {
+  const { keyVerbs, verbs } = language;
   return (
-    <nav className="verb-list" aria-label="Verbs to practise" lang="fr">
+    <nav className="verb-list" aria-label="Verbs to practise" lang={language.code}>
       {/* Numbered: the key verbs first, set off by a heavy rule, then the rest in dictionary order. */}
-      {[...KEY_VERBS, ...PRACTICE_VERBS.filter((v) => !KEY_VERBS.includes(v))].map((verb, i) => (
-        <a key={verb} href={`#${encodeURIComponent(verb)}`} className={i === KEY_VERBS.length - 1 ? 'last-key' : undefined}>
+      {[...keyVerbs, ...verbs.filter((v) => !keyVerbs.includes(v))].map((verb, i) => (
+        <a key={verb} href={verbHref(language, verb)} className={i === keyVerbs.length - 1 ? 'last-key' : undefined}>
           <span className="num">{String(i + 1).padStart(3, '0')}</span>
           {verb}
         </a>
@@ -162,7 +139,7 @@ function Home() {
   );
 }
 
-function Drill({ sheet }: { sheet: Sheet }) {
+function Drill({ sheet, language }: { sheet: Sheet; language: PracticeLanguage }) {
   const root = useRef<HTMLElement>(null);
   const [values, setValues] = useState<Record<string, string>>({});
   /** Right or wrong, for the blanks that were filled in at the last check and not edited since. */
@@ -179,7 +156,7 @@ function Drill({ sheet }: { sheet: Sheet }) {
     const next: Record<string, boolean> = {};
     for (const blank of blanks) {
       const value = values[blank.id]?.trim();
-      if (value) next[blank.id] = isCorrect(value, blank);
+      if (value) next[blank.id] = isCorrect(value, blank, language.locale);
     }
     setResults(next);
     setChecked(true);
@@ -208,20 +185,21 @@ function Drill({ sheet }: { sheet: Sheet }) {
 
   return (
     <article className="conjugation drill" ref={root}>
-      <Headword lemma={sheet.lemma} lang="fr" pos={sheet.pos} />
+      <Headword lemma={sheet.lemma} lang={language.code} pos={sheet.pos} />
       <JumpNav
-        lang="fr"
-        targets={sheet.sections.map((s) => ({ id: `p-${s.id}`, name: s.fr, short: SHORT_NAMES[s.id] ?? s.fr }))}
+        lang={language.code}
+        targets={sheet.sections.map((s) => ({ id: `p-${s.id}`, name: s.name, short: s.short }))}
       />
 
       {sheet.sections.map((section) => (
         <section key={section.id} className="mood" id={`p-${section.id}`}>
-          <h2 lang="fr">{section.fr}</h2>
+          <h2 lang={language.code}>{section.name}</h2>
           {section.pairs.map((pair) => (
-            <div key={pair[0]!.fr} className="drill-pair">
+            <div key={pair[0]!.name} className="drill-pair">
               {pair.map((exercise) => (
                 <ExerciseBlock
-                  key={exercise.fr}
+                  key={exercise.name}
+                  lang={language.code}
                   exercise={exercise}
                   values={values}
                   results={results}
@@ -259,6 +237,7 @@ function Drill({ sheet }: { sheet: Sheet }) {
 }
 
 function ExerciseBlock({
+  lang,
   exercise,
   values,
   results,
@@ -266,6 +245,7 @@ function ExerciseBlock({
   onChange,
   onKeyDown,
 }: {
+  lang: string;
   exercise: Exercise;
   values: Record<string, string>;
   results: Record<string, boolean>;
@@ -277,24 +257,25 @@ function ExerciseBlock({
   const [open, setOpen] = useState(!exercise.folded);
   return (
     <section className="drill-tense">
-      <h3 lang="fr">
+      <h3 lang={lang}>
         {exercise.folded ? (
           <button type="button" className="fold" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-            {exercise.fr}
+            {exercise.name}
             <svg viewBox="0 0 10 6" width="10" height="6" aria-hidden="true">
               <path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.5" />
             </svg>
           </button>
         ) : (
-          exercise.fr
+          exercise.name
         )}
       </h3>
       {open &&
         exercise.blanks.map((blank) => (
           <BlankRow
             key={blank.id}
+            lang={lang}
             blank={blank}
-            tense={exercise.fr}
+            tense={exercise.name}
             value={values[blank.id] ?? ''}
             result={results[blank.id]}
             showAnswer={showAnswers}
@@ -307,6 +288,7 @@ function ExerciseBlock({
 }
 
 function BlankRow({
+  lang,
   blank,
   tense,
   value,
@@ -315,6 +297,7 @@ function BlankRow({
   onChange,
   onKeyDown,
 }: {
+  lang: string;
   blank: Blank;
   tense: string;
   value: string;
@@ -327,7 +310,7 @@ function BlankRow({
   const answer = blank.forms.join(' / ');
   return (
     <div className="drill-row">
-      <span className="pron" lang="fr">
+      <span className="pron" lang={lang}>
         {blank.label}
       </span>
       {blank.forms.length === 0 ? (
@@ -342,7 +325,7 @@ function BlankRow({
               className="blank"
               rows={1}
               wrap="off"
-              lang="fr"
+              lang={lang}
               value={value}
               // A pasted line break would make it two lines.
               onChange={(e) => onChange(blank.id, e.target.value.replace(/[\r\n]+/g, ' '))}
@@ -361,7 +344,7 @@ function BlankRow({
             {/* Drawn over the right end of the line, so showing it moves nothing. */}
             <span className="blank-side">
               {showAnswer && (
-                <span className="answer" lang="fr">
+                <span className="answer" lang={lang}>
                   {answer}
                 </span>
               )}
@@ -378,26 +361,36 @@ function BlankRow({
   );
 }
 
-function Problem({ state, onRetry }: { state: PracticeState; onRetry(): void }) {
+function Problem({
+  state,
+  language,
+  onRetry,
+}: {
+  state: PracticeState;
+  language: PracticeLanguage;
+  onRetry(): void;
+}) {
   switch (state.status) {
     case 'not-found':
       return (
         <div className="status problem" role="alert">
           <h2>No entry for “{state.query}”</h2>
-          <p>Check the spelling, including accents (é, è, ê, ç).</p>
+          <p>{language.spellingHint}</p>
         </div>
       );
     case 'no-language':
       return (
         <div className="status problem" role="alert">
-          <h2>“{state.query}” is not a French word</h2>
+          <h2>
+            “{state.query}” is not a {language.name} word
+          </h2>
         </div>
       );
     case 'no-inflection':
       return (
         <div className="status problem" role="alert">
           <h2>No conjugation for “{state.query}”</h2>
-          <p>It has a French entry, but Wiktionary gives no conjugation table for it.</p>
+          <p>It has a {language.name} entry, but Wiktionary gives no conjugation table for it.</p>
         </div>
       );
     case 'error':

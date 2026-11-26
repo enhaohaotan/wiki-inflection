@@ -1,10 +1,10 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { InflectionTable } from '../core/types';
-import { french } from '../languages/fr';
-import { findLanguageSection, parsePage } from '../wiktionary/page';
-import { practiceLookup } from './practiceLookup';
+import type { InflectionTable } from '../../core/types';
+import { french } from '../../languages/fr';
+import { findLanguageSection, parsePage } from '../../wiktionary/page';
+import { practiceLookup } from './lookup';
 import { pronominalTable } from './pronominal';
 import { buildSheet } from './sheet';
 
@@ -59,7 +59,7 @@ describe('pronominalTable', () => {
     ]);
     expect(t.periphrastic[0]!.rule).toBe("present indicative of s'être + past participle");
     const pc = buildSheet(t).sections[0]!.pairs[0]![1]!;
-    expect(pc.fr).toBe('Passé composé');
+    expect(pc.name).toBe('Passé composé');
     expect(pc.blanks[0]!.forms).toEqual(["me suis habillé(e)"]);
   });
 });

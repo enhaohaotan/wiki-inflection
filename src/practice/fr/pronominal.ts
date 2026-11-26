@@ -1,4 +1,4 @@
-import type { Inflection, InflectionTable } from '../core/types';
+import type { Inflection, InflectionTable } from '../../core/types';
 
 /**
  * Pronominal conjugations (se coucher, s'excuser) built from the plain verb's
