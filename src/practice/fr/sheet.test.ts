@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { InflectionTable } from '../../core/types';
 import { french } from '../../languages/fr';
-import { conjugationLayout } from '../../languages/fr/verb/conjugation';
+import { conjugationLayout } from '../../languages/fr/verb/layout';
 import { expandForm } from '../../languages/fr/verb/notation';
 import { findLanguageSection, parsePage } from '../../wiktionary/page';
 import { isCorrect as isCorrectIn } from '../answers';

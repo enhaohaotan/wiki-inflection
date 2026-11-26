@@ -3,7 +3,7 @@ import { Words } from '../../../ui/FormTable';
 import { Headword } from '../../../ui/Headword';
 import { JumpNav } from '../../../ui/JumpNav';
 import type { InflectionTable } from '../../../core/types';
-import { layoutConjugation, matchesForm, type FormRow, type MoodBlock, type TenseBlock, type TensePair } from './layout';
+import { layoutConjugation, matchesForm, type FormRow, type MoodBlock, type TenseBlock, type TensePair } from './viewLayout';
 
 interface Props {
   table: InflectionTable;

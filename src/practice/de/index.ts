@@ -1,4 +1,5 @@
 import { conjugationLayout } from '../../languages/de/verb/layout';
+import { plainVerb } from '../../languages/de/verb/reflexive';
 import { hasForms } from '../conjugation';
 import { savedTables, type StoredTable } from '../saved';
 import type { PracticeLanguage } from '../types';
@@ -26,7 +27,7 @@ export const germanPractice: PracticeLanguage = {
   lookup: practiceLookup,
   layout: conjugationLayout,
   // A reflexive verb's table is built from the plain verb's page (sich freuen: freuen).
-  sourcePage: (table) => table.meta.page ?? table.lemma,
+  sourcePage: (table) => table.meta.page ?? plainVerb(table.lemma),
   kindOf,
   isComplete,
   spellingHint: 'Check the spelling, including umlauts (ä, ö, ü) and ß.',

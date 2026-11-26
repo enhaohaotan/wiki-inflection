@@ -1,4 +1,4 @@
-import type { Inflection, InflectionTable } from '../../core/types';
+import type { Inflection, InflectionTable } from '../../../core/types';
 
 /**
  * Pronominal conjugations (se coucher, s'excuser) built from the plain verb's
@@ -23,7 +23,7 @@ export function plainVerb(verb: string): string {
   return verb.replace(/^(?:se |s['’])/, '');
 }
 
-export function isPronominal(verb: string): boolean {
+export function isReflexive(verb: string): boolean {
   return plainVerb(verb) !== verb;
 }
 
@@ -68,7 +68,7 @@ function withSEtre(rule: string): string {
 }
 
 /** The conjugation of `verb` (se coucher), built from its plain verb's table (coucher). */
-export function pronominalTable(plain: InflectionTable, verb: string): InflectionTable {
+export function reflexiveTable(plain: InflectionTable, verb: string): InflectionTable {
   return {
     ...plain,
     lemma: verb,

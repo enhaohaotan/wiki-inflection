@@ -4,9 +4,9 @@ import type { LanguageModule } from '../languages/registry';
 import type { PracticeResult } from './types';
 
 /**
- * What the practice code of German, Spanish and Italian shares besides
- * their layouts: checking a stored table, and looking a verb up, building a
- * reflexive verb's table when Wiktionary has none.
+ * What the practice code of every language shares besides the layout:
+ * checking a stored table, and looking a verb up, building a reflexive
+ * verb's table when Wiktionary has none.
  */
 
 /** Whether a stored table has forms for each of `tags`; for PracticeLanguage.isComplete. */
@@ -29,16 +29,30 @@ export interface ReflexiveVerbs {
   ownTables: boolean;
 }
 
+const normalize = (form: string) => form.normalize('NFC').replace(/[’ʼ]/g, "'").toLowerCase();
+
+/** Whether a table has `form` among its forms. */
+function hasForm(table: InflectionTable, form: string): boolean {
+  const wanted = normalize(form);
+  return table.inflections.some((i) => i.forms.some((f) => normalize(f) === wanted));
+}
+
 /**
  * The table of `verb` in what Wiktionary returned. A page can hold several:
- * the plain and the reflexive verb (hablar, hablarse), or the same verb with
- * old forms too (the first is the standard one). After a reverse lookup
- * (parlo), the verb's table. A reflexive verb needs its own, not the plain verb's.
+ * the plain and the reflexive verb (hablar, hablarse; être, s'être), or the
+ * same verb with old forms too (the first is the standard one). A reflexive
+ * verb needs its own table, not the plain verb's. After a reverse lookup
+ * (suis), the plain verb's table if it has the form (être), else the first
+ * that has it (suivre); else the first.
  */
 function tableIn(result: LookupResult, verb: string, reflexive: ReflexiveVerbs): InflectionTable | undefined {
   if (result.status !== 'ok') return undefined;
-  const own = result.entry.tables.find((t) => t.lemma === verb);
-  return own ?? (reflexive.isReflexive(verb) ? undefined : result.entry.tables[0]);
+  const { entry, match } = result;
+  const own = entry.tables.find((t) => t.lemma === verb);
+  if (own || reflexive.isReflexive(verb)) return own;
+  const plain = entry.tables.find((t) => t.lemma === entry.title) ?? entry.tables[0];
+  if (!match || (plain && hasForm(plain, match.form))) return plain;
+  return entry.tables.find((t) => hasForm(t, match.form)) ?? plain;
 }
 
 /**
@@ -52,10 +66,12 @@ export async function practiceLookup(
   verb: string,
   signal?: AbortSignal,
 ): Promise<PracticeResult> {
-  const ok = (table: InflectionTable, built = table): PracticeResult => ({
+  // Credited to the page the table was read from; a table cached before
+  // tables recorded it is credited to the page its lookup ended on.
+  const ok = (from: LookupResult, table: InflectionTable, built = table): PracticeResult => ({
     status: 'ok',
     table: built,
-    page: table.meta.page ?? verb,
+    page: table.meta.page ?? (from.status === 'ok' ? from.entry.title : verb),
   });
   const isReflexive = reflexive.isReflexive(verb);
   const plain = reflexive.plainVerb(verb);
@@ -64,7 +80,7 @@ export async function practiceLookup(
   if (!isReflexive || reflexive.ownTables) {
     result = await lookup(language, verb, signal);
     const table = tableIn(result, verb, reflexive);
-    if (table) return ok(table);
+    if (table) return ok(result, table);
     if (!isReflexive) return result.status === 'ok' ? { status: 'no-inflection', query: verb } : result;
   }
 
@@ -73,9 +89,9 @@ export async function practiceLookup(
   // Rate-limited or offline: say so, rather than that there is no table.
   if (plainResult.status === 'error') return plainResult;
   const own = reflexive.ownTables ? tableIn(plainResult, verb, reflexive) : undefined;
-  if (own) return ok(own);
+  if (own) return ok(plainResult, own);
   const plainTable = tableIn(plainResult, plain, reflexive);
-  if (plainTable) return ok(plainTable, reflexive.build(plainTable, verb));
+  if (plainTable) return ok(plainResult, plainTable, reflexive.build(plainTable, verb));
   // Say why: the reflexive verb's own page if it was looked up, else the plain verb's.
   const reason = result ?? plainResult;
   return reason.status === 'ok' ? { status: 'no-inflection', query: verb } : reason;

@@ -8,7 +8,7 @@ import { DanishPronounView } from './da/pronoun/PronounView';
 import { DanishVerbView } from './da/verb/VerbView';
 import { danishMainTables, danishTablesWithMatch } from './da/verb/layout';
 import { ConjugationView } from './fr/verb/ConjugationView';
-import { mainTable, tablesWithMatch } from './fr/verb/layout';
+import { mainTable, tablesWithMatch } from './fr/verb/viewLayout';
 
 export interface EntryViewProps {
   /**

@@ -1,6 +1,7 @@
 import type { InflectionTable } from '../../../core/types';
 import { formsOf, layOut, type ConjugationLayout, type Language } from '../../conjugation';
 import { PERSONS, type Person } from '../../verbTables';
+import { HABER } from './auxiliaries';
 import { isReflexive, REFLEXIVE_PRONOUNS } from './reflexive';
 
 /**
@@ -26,19 +27,6 @@ const IMPERATIVE_SUBJECTS: Record<string, string> = {
   '1p': 'nosotros',
   '2p': 'vosotros',
   '3p': 'ustedes',
-};
-
-/** haber's forms in each simple tense, yo to ellos, by the tense's tags. */
-const HABER: Record<string, string[]> = {
-  'pres|ind': ['he', 'has', 'ha', 'hemos', 'habéis', 'han'],
-  'impf|ind': ['había', 'habías', 'había', 'habíamos', 'habíais', 'habían'],
-  pret: ['hube', 'hubiste', 'hubo', 'hubimos', 'hubisteis', 'hubieron'],
-  fut: ['habré', 'habrás', 'habrá', 'habremos', 'habréis', 'habrán'],
-  cond: ['habría', 'habrías', 'habría', 'habríamos', 'habríais', 'habrían'],
-  'pres|sub': ['haya', 'hayas', 'haya', 'hayamos', 'hayáis', 'hayan'],
-  'impf|sub|ra': ['hubiera', 'hubieras', 'hubiera', 'hubiéramos', 'hubierais', 'hubieran'],
-  'impf|sub|se': ['hubiese', 'hubieses', 'hubiese', 'hubiésemos', 'hubieseis', 'hubiesen'],
-  'fut|sub': ['hubiere', 'hubieres', 'hubiere', 'hubiéremos', 'hubiereis', 'hubieren'],
 };
 
 /**

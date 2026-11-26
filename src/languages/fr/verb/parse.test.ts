@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { InflectionTable } from '../../../core/types';
 import { findLanguageSection, listLanguages, parsePage } from '../../../wiktionary/page';
 import { french } from '..';
-import { layoutConjugation, pronounFor, type MoodBlock } from './layout';
+import { layoutConjugation, pronounFor, type MoodBlock } from './viewLayout';
 
 const tensesOf = (mood: MoodBlock) => mood.pairs.flatMap((p) => (p.compound ? [p.simple, p.compound] : [p.simple]));
 import { parseFrenchVerbTables } from './parse';

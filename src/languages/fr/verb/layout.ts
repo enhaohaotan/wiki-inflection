@@ -1,288 +1,136 @@
-import type { InflectionTable, LanguageEntry } from '../../../core/types';
-import { auxiliariesInRule, type AuxTense } from './auxiliaries';
-import { compoundForm, participleOf, pronounFor, slotOf, type MoodKind, type Num, type Person } from './words';
-
-// Kept for the viewer and its tests, which import them from here.
-export { agreementNotation, pronounFor, type ParticipleForms } from './words';
+import type { InflectionTable } from '../../../core/types';
+import { layOut, type ConjugationLayout, type Language } from '../../conjugation';
+import { PERSONS } from '../../verbTables';
+import { auxiliariesInRule, type AuxiliaryUse, type AuxTense } from './auxiliaries';
+import { expandForm } from './notation';
+import { compoundForm, participleOf, pronounFor, slotOf, type Num, type ParticipleForms, type Person } from './words';
 
 /**
- * How a French conjugation is presented: which tags make up which tense,
- * in what order, under which names, and with which subject pronouns.
- * Compound tenses are built here from the auxiliary and the past participle.
- * Pure data + functions, so it can be tested without rendering.
+ * French, described for the shared engine (../../conjugation.ts): its moods
+ * and tenses, and how a compound form is spelled (./words.ts). The simple
+ * tenses come from the table; a compound tense is the auxiliary Wiktionary's
+ * rule for it names (avoir, être, or both) and the past participle, which
+ * agrees after être (suis allé(e)). Answers are written in the viewer's
+ * notation (allé(e)(s), dissous / dissoute), spelled out for checking.
  */
 
-interface SimpleTenseSpec {
-  tags: string[];
-  fr: string;
-  en: string;
-}
-
-interface CompoundTenseSpec {
-  /** Key of Wiktionary's rule for this tense, which names the auxiliary. */
+/** A compound tense: Wiktionary's rule for it, which names the auxiliary, and the auxiliary's tense. */
+interface Build {
   rule: string;
-  /**
-   * Simple tense the auxiliary is put in. It is also the simple tense this
-   * compound tense is shown beside (présent / passé composé, ...).
-   */
   auxTense: AuxTense;
-  fr: string;
-  en: string;
 }
 
-interface MoodSpec {
-  id: string;
-  fr: string;
-  en: string;
-  kind: MoodKind;
-  simple: SimpleTenseSpec[];
-  compound: CompoundTenseSpec[];
+interface Verb {
+  table: InflectionTable;
+  participle: ParticipleForms | null;
 }
 
-const MOODS: MoodSpec[] = [
-  {
-    id: 'indicatif',
-    fr: 'Indicatif',
-    en: 'Indicative',
-    kind: 'plain',
-    simple: [
-      { tags: ['pres', 'indc'], fr: 'Présent', en: 'Present' },
-      { tags: ['impf', 'indc'], fr: 'Imparfait', en: 'Imperfect' },
-      { tags: ['phis'], fr: 'Passé simple', en: 'Past historic' },
-      { tags: ['futr'], fr: 'Futur simple', en: 'Future' },
-    ],
-    compound: [
-      { rule: 'indicative:present perfect', auxTense: 'pres|indc', fr: 'Passé composé', en: 'Present perfect' },
-      { rule: 'indicative:pluperfect', auxTense: 'impf|indc', fr: 'Plus-que-parfait', en: 'Pluperfect' },
-      { rule: 'indicative:past anterior', auxTense: 'phis', fr: 'Passé antérieur', en: 'Past anterior' },
-      { rule: 'indicative:future perfect', auxTense: 'futr', fr: 'Futur antérieur', en: 'Future perfect' },
-    ],
-  },
-  {
-    id: 'conditionnel',
-    fr: 'Conditionnel',
-    en: 'Conditional',
-    kind: 'plain',
-    simple: [{ tags: ['cond'], fr: 'Présent', en: 'Present' }],
-    compound: [{ rule: 'indicative:conditional perfect', auxTense: 'cond', fr: 'Passé', en: 'Perfect' }],
-  },
-  {
-    id: 'subjonctif',
-    fr: 'Subjonctif',
-    en: 'Subjunctive',
-    kind: 'subjunctive',
-    simple: [
-      { tags: ['pres', 'subj'], fr: 'Présent', en: 'Present' },
-      { tags: ['impf', 'subj'], fr: 'Imparfait', en: 'Imperfect' },
-    ],
-    compound: [
-      { rule: 'subjunctive:past', auxTense: 'pres|subj', fr: 'Passé', en: 'Past' },
-      { rule: 'subjunctive:pluperfect', auxTense: 'impf|subj', fr: 'Plus-que-parfait', en: 'Pluperfect' },
-    ],
-  },
-  {
-    id: 'imperatif',
-    fr: 'Impératif',
-    en: 'Imperative',
-    kind: 'imperative',
-    simple: [{ tags: ['impr'], fr: 'Présent', en: 'Present' }],
-    compound: [{ rule: 'imperative:compound', auxTense: 'impr', fr: 'Passé', en: 'Past' }],
-  },
-];
-
-const ALL_PERSONS: [Person, Num][] = [
-  ['1', 's'],
-  ['2', 's'],
-  ['3', 's'],
-  ['1', 'p'],
-  ['2', 'p'],
-  ['3', 'p'],
-];
-const IMPERATIVE_PERSONS: [Person, Num][] = [
+const IMPERATIVE_PERSONS = [
   ['2', 's'],
   ['1', 'p'],
   ['2', 'p'],
-];
+] as const;
 
-export interface FormRow {
-  pronoun: string;
-  /** Empty when the verb has no form for this person (defective verbs). */
-  forms: string[];
-  /** Each form with the pronoun as written before it (elision can differ per form). */
-  parts: { pronoun: string; form: string }[];
-}
-
-function rowOf(person: Person, num: Num, kind: MoodKind, forms: string[]): FormRow {
-  const parts = forms.map((form) => ({ pronoun: pronounFor(person, num, kind, form), form }));
-  const pronouns = [...new Set(parts.map((p) => p.pronoun))];
-  return {
-    pronoun: pronouns.length > 0 ? pronouns.join(' / ') : pronounFor(person, num, kind, undefined),
-    forms,
-    parts,
-  };
-}
-
-export interface TenseBlock {
-  fr: string;
-  en: string;
-  compound: boolean;
-  rows: FormRow[];
-}
-
-/** A simple tense and the compound tense built on it, shown side by side. */
-export interface TensePair {
-  simple: TenseBlock;
-  compound?: TenseBlock;
-}
-
-export interface MoodBlock {
-  id: string;
-  fr: string;
-  en: string;
-  pairs: TensePair[];
-}
-
-/** A participle, shown in its own section after the moods. */
-export interface ParticipleForm {
-  /** "Présent" or "Passé". */
-  fr: string;
-  forms: string[];
-  /** Agreed forms not shown but belonging to this slot (allée, allés, allées). */
-  agreed: string[];
-}
-
-function normalizeForm(text: string): string {
-  return text.normalize('NFC').replace(/[\u2019\u02BC]/g, "'").trim().toLocaleLowerCase('fr');
+/** A simple tense and the compound tense built on it. */
+function pair(simple: string, tags: AuxTense, compound: string, rule: string, folded = false) {
+  return [
+    { name: simple, tags: [tags], folded },
+    { name: compound, build: { rule, auxTense: tags }, on: tags },
+  ];
 }
 
 /**
- * "m'assois", "nous assoyons", "assois-toi" -> "assois", "assoyons", "assois";
- * with "en" too: "m'en suis", "nous en sommes", "va-t'en" -> "suis", "sommes", "va".
+ * Folded at first, besides the compound tenses: the tenses of written
+ * narrative only (passé simple; imperfect subjunctive).
  */
-function withoutReflexive(form: string): string {
-  return form
-    .replace(/^(?:[mts]'en |(?:nous|vous) en |[mts]'|(?:me|te|se|nous|vous) )/, '')
-    .replace(/-(?:t'en|(?:nous|vous)-en|toi|nous|vous)$/, '');
-}
+export const FRENCH: Language<Verb, Build, AuxiliaryUse> = {
+  moods: [
+    {
+      id: 'indicatif',
+      name: 'Indicatif',
+      short: 'Ind.',
+      kind: 'plain',
+      persons: PERSONS,
+      pairs: [
+        pair('Présent', 'pres|indc', 'Passé composé', 'indicative:present perfect'),
+        pair('Imparfait', 'impf|indc', 'Plus-que-parfait', 'indicative:pluperfect'),
+        pair('Passé simple', 'phis', 'Passé antérieur', 'indicative:past anterior', true),
+        pair('Futur simple', 'futr', 'Futur antérieur', 'indicative:future perfect'),
+      ],
+    },
+    {
+      id: 'conditionnel',
+      name: 'Conditionnel',
+      short: 'Cond.',
+      kind: 'plain',
+      persons: PERSONS,
+      pairs: [pair('Présent', 'cond', 'Passé', 'indicative:conditional perfect')],
+    },
+    {
+      id: 'subjonctif',
+      name: 'Subjonctif',
+      short: 'Subj.',
+      kind: 'subjunctive',
+      persons: PERSONS,
+      pairs: [
+        pair('Présent', 'pres|subj', 'Passé', 'subjunctive:past'),
+        pair('Imparfait', 'impf|subj', 'Plus-que-parfait', 'subjunctive:pluperfect', true),
+      ],
+    },
+    {
+      id: 'imperatif',
+      name: 'Impératif',
+      short: 'Impér.',
+      kind: 'imperative',
+      persons: IMPERATIVE_PERSONS,
+      pairs: [pair('Présent', 'impr', 'Passé', 'imperative:compound')],
+    },
+  ],
 
-/** For each table, whether it contains the looked-up form (participle agreement included). */
-export function tablesWithMatch(tables: InflectionTable[], query: string | undefined): boolean[] {
-  return tables.map(
-    (table) => !!query && table.inflections.some((i) => i.forms.some((form) => matchesForm(form, query))),
-  );
-}
+  forms: [
+    {
+      id: 'participe',
+      name: 'Participe',
+      short: 'Part.',
+      tense: 'Participe',
+      rows({ table }) {
+        // The infinitive is the headword itself, so only the participles are asked.
+        return [
+          ['ppr', 'présent'],
+          ['pp', 'passé'],
+        ].flatMap(([tag, label]) => {
+          const slot = slotOf(table, [tag!]);
+          if (!slot) return [];
+          // The agreed forms (allée, allés, allées) are right too.
+          const agreed =
+            tag === 'pp' ? table.inflections.filter((i) => i.tags[0] === 'pp' && i.tags.length === 3).flatMap((i) => i.forms) : [];
+          return [{ label: label!, shown: slot.forms, accepted: [...new Set([...slot.forms, ...agreed].flatMap(expandForm))] }];
+        });
+      },
+    },
+  ],
 
-/**
- * The one table that stands for an entry after a reverse lookup: the plain
- * verb (être rather than s'être / s'en être) when it has the form, else the
- * first table that has it, else the plain verb anyway.
- */
-export function mainTable(entry: LanguageEntry, query: string): InflectionTable | undefined {
-  const plain = entry.tables.find((t) => t.lemma === entry.title) ?? entry.tables[0];
-  const hits = tablesWithMatch(entry.tables, query);
-  const matching = entry.tables.filter((_, i) => hits[i]);
-  return plain && matching.includes(plain) ? plain : (matching[0] ?? plain);
-}
+  // Elided as written before the form (j’ai, que j’aille).
+  subject: ([person, num], kind, form) => pronounFor(person as Person, num as Num, kind, form),
 
-/**
- * Whether a form shown in the table is the word that was looked up. Pronominal
- * tables write the pronoun into the form, so "assois" matches "m'assois".
- */
-export function matchesForm(form: string, query: string): boolean {
-  const f = normalizeForm(form);
-  const q = normalizeForm(query);
-  return f === q || withoutReflexive(f) === q;
-}
+  verb: (table) => ({ table, participle: participleOf(table) }),
 
-export interface Conjugation {
-  lemma: string;
-  title: string;
-  moods: MoodBlock[];
-  participles: ParticipleForm[];
-}
+  auxiliaries({ table, participle }, build, kind) {
+    const rule = table.periphrastic.find((p) => p.key === build.rule);
+    if (!rule || !participle) return { shown: [], also: [] };
+    const uses = auxiliariesInRule(rule.rule);
+    // A compound imperative of a pronominal verb is not used.
+    return { shown: kind === 'imperative' ? uses.filter((u) => !u.reflexive) : uses, also: [] };
+  },
 
-function compoundRows(
-  table: InflectionTable,
-  mood: MoodSpec,
-  spec: CompoundTenseSpec,
-  persons: [Person, Num][],
-  hasPerson: (person: Person, num: Num) => boolean,
-): FormRow[] | null {
-  const rule = table.periphrastic.find((p) => p.key === spec.rule);
-  const participle = participleOf(table);
-  if (!rule || !participle) return null;
+  build({ participle }, build, use, [person, num]) {
+    const form = compoundForm(use, build.auxTense, person as Person, num as Num, participle!);
+    return form ? { shown: [form], accepted: expandForm(form) } : { shown: [], accepted: [] };
+  },
 
-  let uses = auxiliariesInRule(rule.rule);
-  // A compound imperative of a pronominal verb is not used.
-  if (mood.kind === 'imperative') uses = uses.filter((u) => !u.reflexive);
-  if (uses.length === 0) return null;
+  accepts: expandForm,
+};
 
-  return persons.map(([person, num]): FormRow => {
-    const forms = hasPerson(person, num)
-      ? uses
-          .map((use) => compoundForm(use, spec.auxTense, person, num, participle))
-          .filter((f): f is string => f !== null)
-      : [];
-    // With two auxiliaries the elision can differ (j’ai passé / je suis passé).
-    return rowOf(person, num, mood.kind, forms);
-  });
-}
-
-export function layoutConjugation(table: InflectionTable): Conjugation {
-  // The infinitive is the headword itself, so only the participles are listed.
-  const participles: ParticipleForm[] = [];
-  for (const [tag, fr] of [
-    ['ppr', 'Présent'],
-    ['pp', 'Passé'],
-  ] as const) {
-    const slot = slotOf(table, [tag]);
-    if (!slot) continue;
-    const agreed =
-      tag === 'pp'
-        ? table.inflections.filter((i) => i.tags[0] === 'pp' && i.tags.length === 3).flatMap((i) => i.forms)
-        : [];
-    participles.push({ fr, forms: slot.forms, agreed });
-  }
-
-  const finite = table.inflections.filter((i) => /^[123]$/.test(i.tags[0] ?? ''));
-
-  const moods: MoodBlock[] = [];
-  for (const mood of MOODS) {
-    const persons = mood.kind === 'imperative' ? IMPERATIVE_PERSONS : ALL_PERSONS;
-    // A compound form exists for a person only where the verb has simple forms
-    // for that person (so "pleuvoir" gets "il a plu" but no "j'ai plu").
-    const hasPerson = (person: Person, num: Num) =>
-      finite.some(
-        (i) =>
-          i.tags[0] === person && i.tags[1] === num && (mood.kind === 'imperative') === i.tags.includes('impr'),
-      );
-
-    const pairs: TensePair[] = [];
-    for (const tense of mood.simple) {
-      const rows = persons.map(([person, num]): FormRow => {
-        const slot = slotOf(table, [person, num, ...tense.tags]);
-        return rowOf(person, num, mood.kind, slot?.forms ?? []);
-      });
-      if (!rows.some((r) => r.forms.length > 0)) continue;
-
-      const pair: TensePair = { simple: { fr: tense.fr, en: tense.en, compound: false, rows } };
-      const spec = mood.compound.find((c) => c.auxTense === tense.tags.join('|'));
-      const compoundRowsForSpec = spec && compoundRows(table, mood, spec, persons, hasPerson);
-      if (spec && compoundRowsForSpec?.some((r) => r.forms.length > 0)) {
-        pair.compound = { fr: spec.fr, en: spec.en, compound: true, rows: compoundRowsForSpec };
-      }
-      pairs.push(pair);
-    }
-    // A mood with no simple forms at all (e.g. imperative of "pleuvoir") is left out.
-    if (pairs.length === 0) continue;
-
-    moods.push({ id: mood.id, fr: mood.fr, en: mood.en, pairs });
-  }
-
-  return {
-    lemma: table.lemma,
-    title: table.title,
-    participles,
-    moods,
-  };
+export function conjugationLayout(table: InflectionTable): ConjugationLayout {
+  return layOut(FRENCH, table);
 }

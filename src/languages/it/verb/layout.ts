@@ -1,6 +1,7 @@
 import type { InflectionTable } from '../../../core/types';
 import { formsOf, layOut, type ConjugationLayout, type Language } from '../../conjugation';
 import { PERSONS, type Person } from '../../verbTables';
+import { AUXILIARY_FORMS } from './auxiliaries';
 import { isReflexive, REFLEXIVE_PRONOUNS } from './reflexive';
 
 /**
@@ -12,28 +13,6 @@ import { isReflexive, REFLEXIVE_PRONOUNS } from './reflexive';
  */
 
 const SUBJECTS: Record<string, string> = { '1s': 'io', '2s': 'tu', '3s': 'lui/lei', '1p': 'noi', '2p': 'voi', '3p': 'loro' };
-
-/** The auxiliaries' forms in each simple tense, io to loro, by the tense's tags. */
-const AUXILIARY_FORMS: Record<string, Record<string, string[]>> = {
-  avere: {
-    'pres|ind': ['ho', 'hai', 'ha', 'abbiamo', 'avete', 'hanno'],
-    'impf|ind': ['avevo', 'avevi', 'aveva', 'avevamo', 'avevate', 'avevano'],
-    phis: ['ebbi', 'avesti', 'ebbe', 'avemmo', 'aveste', 'ebbero'],
-    fut: ['avrò', 'avrai', 'avrà', 'avremo', 'avrete', 'avranno'],
-    cond: ['avrei', 'avresti', 'avrebbe', 'avremmo', 'avreste', 'avrebbero'],
-    'pres|sub': ['abbia', 'abbia', 'abbia', 'abbiamo', 'abbiate', 'abbiano'],
-    'impf|sub': ['avessi', 'avessi', 'avesse', 'avessimo', 'aveste', 'avessero'],
-  },
-  essere: {
-    'pres|ind': ['sono', 'sei', 'è', 'siamo', 'siete', 'sono'],
-    'impf|ind': ['ero', 'eri', 'era', 'eravamo', 'eravate', 'erano'],
-    phis: ['fui', 'fosti', 'fu', 'fummo', 'foste', 'furono'],
-    fut: ['sarò', 'sarai', 'sarà', 'saremo', 'sarete', 'saranno'],
-    cond: ['sarei', 'saresti', 'sarebbe', 'saremmo', 'sareste', 'sarebbero'],
-    'pres|sub': ['sia', 'sia', 'sia', 'siamo', 'siate', 'siano'],
-    'impf|sub': ['fossi', 'fossi', 'fosse', 'fossimo', 'foste', 'fossero'],
-  },
-};
 
 /** A compound tense: the auxiliary in this simple tense, and the past participle. */
 type Build = string;

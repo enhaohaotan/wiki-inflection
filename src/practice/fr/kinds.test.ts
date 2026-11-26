@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { french } from '../../languages/fr';
-import { conjugationLayout } from '../../languages/fr/verb/conjugation';
+import { conjugationLayout } from '../../languages/fr/verb/layout';
 import { findLanguageSection, parsePage } from '../../wiktionary/page';
 import { randomVerb } from '../random';
 import { kindOf } from './kinds';

@@ -5,7 +5,7 @@ import type { InflectionTable } from '../../../core/types';
 import { findLanguageSection, parsePage } from '../../../wiktionary/page';
 import { french } from '..';
 import { auxiliariesInRule } from './auxiliaries';
-import { agreementNotation, layoutConjugation, type Conjugation } from './layout';
+import { agreementNotation, layoutConjugation, type Conjugation } from './viewLayout';
 import { parseParticipleForms } from './participle';
 
 function section(fixture: string): Element {

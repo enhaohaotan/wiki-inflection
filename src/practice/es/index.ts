@@ -1,4 +1,5 @@
 import { conjugationLayout } from '../../languages/es/verb/layout';
+import { plainVerb } from '../../languages/es/verb/reflexive';
 import { hasForms } from '../conjugation';
 import { savedTables, type StoredTable } from '../saved';
 import type { PracticeLanguage } from '../types';
@@ -27,7 +28,7 @@ export const spanishPractice: PracticeLanguage = {
   lookup: practiceLookup,
   layout: conjugationLayout,
   // The page the table was read from: levantarse's is on levantar's page.
-  sourcePage: (table) => table.meta.page ?? table.lemma,
+  sourcePage: (table) => table.meta.page ?? plainVerb(table.lemma),
   kindOf,
   isComplete,
   spellingHint: 'Check the spelling, including accents (á, é, í, ó, ú, ñ).',

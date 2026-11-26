@@ -1,7 +1,7 @@
 import type { InflectionTable } from '../../../core/types';
 import { formsOf, layOut, type ConjugationLayout, type Language } from '../../conjugation';
 import { PERSONS } from '../../verbTables';
-import { USUAL_AUXILIARY } from './auxiliaries';
+import { AUXILIARIES, USUAL_AUXILIARY, WERDEN } from './auxiliaries';
 import { isReflexive, REFLEXIVE_PRONOUNS } from './reflexive';
 
 /**
@@ -21,26 +21,6 @@ const SUBJECTS: Record<string, string> = {
   '2p': 'ihr',
   '3p': 'sie/Sie',
 };
-
-/** The helping verbs' forms, ich to sie, by the tags of the tense. */
-const HABEN: Record<string, string[]> = {
-  pres: ['habe', 'hast', 'hat', 'haben', 'habt', 'haben'],
-  pret: ['hatte', 'hattest', 'hatte', 'hatten', 'hattet', 'hatten'],
-  'sub:I': ['habe', 'habest', 'habe', 'haben', 'habet', 'haben'],
-  'sub:II': ['hätte', 'hättest', 'hätte', 'hätten', 'hättet', 'hätten'],
-};
-const SEIN: Record<string, string[]> = {
-  pres: ['bin', 'bist', 'ist', 'sind', 'seid', 'sind'],
-  pret: ['war', 'warst', 'war', 'waren', 'wart', 'waren'],
-  'sub:I': ['sei', 'seist', 'sei', 'seien', 'seiet', 'seien'],
-  'sub:II': ['wäre', 'wärst', 'wäre', 'wären', 'wärt', 'wären'],
-};
-const WERDEN: Record<string, string[]> = {
-  pres: ['werde', 'wirst', 'wird', 'werden', 'werdet', 'werden'],
-  'sub:I': ['werde', 'werdest', 'werde', 'werden', 'werdet', 'werden'],
-  'sub:II': ['würde', 'würdest', 'würde', 'würden', 'würdet', 'würden'],
-};
-const AUXILIARIES: Record<string, Record<string, string[]>> = { haben: HABEN, sein: SEIN };
 
 /** How a tense is built, with the helping verb in `tense`. */
 type Build =

@@ -1,4 +1,5 @@
 import { conjugationLayout } from '../../languages/it/verb/layout';
+import { plainVerb } from '../../languages/it/verb/reflexive';
 import { hasForms } from '../conjugation';
 import { savedTables, type StoredTable } from '../saved';
 import type { PracticeLanguage } from '../types';
@@ -26,7 +27,7 @@ export const italianPractice: PracticeLanguage = {
   lookup: practiceLookup,
   layout: conjugationLayout,
   // The page the table was read from: chiamarsi has its own; alzarsi is built from alzare's.
-  sourcePage: (table) => table.meta.page ?? table.lemma,
+  sourcePage: (table) => table.meta.page ?? plainVerb(table.lemma),
   kindOf,
   isComplete,
   spellingHint: 'Check the spelling, including the accent on a final vowel (parlò, sarà, è).',

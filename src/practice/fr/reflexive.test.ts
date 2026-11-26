@@ -3,11 +3,11 @@ import { resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { InflectionTable } from '../../core/types';
 import { french } from '../../languages/fr';
-import { conjugationLayout } from '../../languages/fr/verb/conjugation';
+import { conjugationLayout } from '../../languages/fr/verb/layout';
 import { findLanguageSection, parsePage } from '../../wiktionary/page';
 import { buildSheet as sheetOf } from '../sheet';
 import { practiceLookup } from './lookup';
-import { pronominalTable } from './pronominal';
+import { reflexiveTable } from '../../languages/fr/verb/reflexive';
 
 const buildSheet = (table: InflectionTable) => sheetOf(conjugationLayout(table));
 
@@ -23,11 +23,11 @@ async function tables(verb: string): Promise<InflectionTable[]> {
   return entry.tables;
 }
 
-describe('pronominalTable', () => {
+describe('reflexiveTable', () => {
   it("builds s'asseoir from asseoir exactly as Wiktionary's own table has it", async () => {
     const [asseoir, sAsseoir] = await tables('asseoir');
     expect(sAsseoir!.lemma).toBe("s'asseoir");
-    expect(buildSheet(pronominalTable(asseoir!, "s'asseoir"))).toEqual(buildSheet(sAsseoir!));
+    expect(buildSheet(reflexiveTable(asseoir!, "s'asseoir"))).toEqual(buildSheet(sAsseoir!));
   });
 
   it('elides before a vowel or h, puts the pronoun after an imperative, and uses s’être', () => {
@@ -49,7 +49,7 @@ describe('pronominalTable', () => {
         { key: 'indicative:present perfect', label: '', rule: 'present indicative of avoir + past participle' },
       ],
     };
-    const t = pronominalTable(plain, "s'habiller");
+    const t = reflexiveTable(plain, "s'habiller");
     expect(t.inflections.map((i) => i.forms[0])).toEqual([
       "m'habille",
       'nous habillons',

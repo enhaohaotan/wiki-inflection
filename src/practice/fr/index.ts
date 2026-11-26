@@ -1,10 +1,10 @@
 import { auxiliariesInRule } from '../../languages/fr/verb/auxiliaries';
-import { conjugationLayout } from '../../languages/fr/verb/conjugation';
+import { conjugationLayout } from '../../languages/fr/verb/layout';
 import { savedTables, type StoredTable } from '../saved';
 import type { PracticeLanguage } from '../types';
 import { kindOf } from './kinds';
 import { practiceLookup } from './lookup';
-import { plainVerb } from './pronominal';
+import { plainVerb } from '../../languages/fr/verb/reflexive';
 import { KEY_VERBS, PRACTICE_VERBS } from './verbs';
 
 /**
@@ -35,9 +35,8 @@ export const frenchPractice: PracticeLanguage = {
   ...savedTables(() => import('./data/verbTables.json?raw'), 'fr', 'fr'),
   lookup: practiceLookup,
   layout: conjugationLayout,
-  // A pronominal verb is credited to its plain verb (se lever -> lever),
-  // whose page its table is built from.
-  sourcePage: (table) => plainVerb(table.lemma),
+  // The page the table was read from: s'asseoir's is on asseoir's; se lever is built from lever's.
+  sourcePage: (table) => table.meta.page ?? plainVerb(table.lemma),
   kindOf,
   isComplete: (table) => !lacksAgreement(table),
   spellingHint: 'Check the spelling, including accents (é, è, ê, ç).',

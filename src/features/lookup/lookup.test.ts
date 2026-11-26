@@ -2,7 +2,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { french } from '../../languages/fr';
-import { mainTable, matchesForm, tablesWithMatch } from '../../languages/fr/verb/layout';
+import { mainTable, matchesForm, tablesWithMatch } from '../../languages/fr/verb/viewLayout';
 import { findLanguageSection, formOfTargets, parsePage } from '../../wiktionary/page';
 import { lookup } from './lookup';
 

@@ -202,7 +202,8 @@ export function parseFrenchVerbTables(section: Element, pageTitle: string): Infl
     const lemma = infinitive || /^Conjugation of (.+)$/.exec(title)?.[1] || pageTitle;
     inflections.unshift({ tags: ['inf'], forms: [lemma], ipa: [] });
 
-    const meta: Record<string, string> = {};
+    // The page it was read from, as for the other languages: credited on the practice page.
+    const meta: Record<string, string> = { page: pageTitle };
     const auxiliary = cleanText(table.querySelector('th.roa-compound-row a'));
     if (auxiliary) meta.auxiliary = auxiliary;
 
