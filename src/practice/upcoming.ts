@@ -1,6 +1,5 @@
 import * as de from './de/verbs';
 import * as es from './es/verbs';
-import * as it from './it/verbs';
 import type { PracticeLanguage } from './types';
 
 type Upcoming = Pick<PracticeLanguage, 'code' | 'name' | 'ownName' | 'placeholder' | 'flag'> & {
@@ -48,13 +47,4 @@ export const spanishPractice = upcoming({
   placeholder: 'verbo',
   // The middle band is twice as wide: red, yellow, yellow, red.
   flag: ['#aa151b', '#f1bf00', '#f1bf00', '#aa151b'],
-});
-
-export const italianPractice = upcoming({
-  code: 'it',
-  verbs: it,
-  name: 'Italian',
-  ownName: 'Italiano',
-  placeholder: 'verbo',
-  flag: ['#009246', '#ffffff', '#ce2b37'],
 });

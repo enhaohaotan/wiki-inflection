@@ -15,6 +15,8 @@ export interface StoredTable {
   pos: string;
   inflections: { tags: string[]; forms: string[] }[];
   periphrastic: { key: string; rule: string }[];
+  /** Language-specific extras some languages need, e.g. Italian's verb class ("-ere; irregular"). */
+  meta?: Record<string, string>;
 }
 
 export interface SavedTables {
@@ -33,6 +35,7 @@ export function storeTable(table: InflectionTable): StoredTable {
     pos: table.pos,
     inflections: table.inflections.map(({ tags, forms }) => ({ tags, forms })),
     periphrastic: table.periphrastic.map(({ key, rule }) => ({ key, rule })),
+    ...(Object.keys(table.meta).length > 0 && { meta: table.meta }),
   };
 }
 
@@ -45,7 +48,7 @@ export function fromStored(stored: StoredTable, lang: string): InflectionTable {
     inflections: stored.inflections.map((i) => ({ ...i, ipa: [] })),
     periphrastic: stored.periphrastic.map((p) => ({ ...p, label: p.key })),
     notes: [],
-    meta: {},
+    meta: stored.meta ?? {},
   };
 }
 
