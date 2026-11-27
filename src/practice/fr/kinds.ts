@@ -6,6 +6,10 @@ import type { VerbKind } from '../types';
  * second-group verb has only its group's endings; one whose forms follow the
  * endings but change spelling (mangeons, appelle) has a spelling change;
  * anything else is irregular.
+ *
+ * Judged from the forms, unlike in the other languages: their Wiktionary
+ * tables name the verb's class in the heading ("-ere; irregular", "class 4
+ * strong"), the French ones do not.
  */
 
 /** -er verbs whose forms are not the -er endings at all. */

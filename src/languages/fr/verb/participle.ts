@@ -1,5 +1,6 @@
 import type { Inflection } from '../../../core/types';
 import { cleanText, headingPath } from '../../../wiktionary/page';
+import { auxiliariesInRule } from './auxiliaries';
 import { tagsOf } from './parse';
 
 /**
@@ -40,4 +41,21 @@ export function parseParticipleForms(section: Element): Inflection[] {
     if (group) return [...group.values()];
   }
   return [];
+}
+
+/**
+ * Whether a table lacks the agreed participle forms (allée, allés, allées)
+ * its compound tenses with être need. They come from a second page, so a
+ * lookup interrupted by Wiktionary's rate limit can return the table without
+ * them; it is then fetched again rather than saved incomplete.
+ */
+export function lacksAgreement(table: {
+  inflections: { tags: string[] }[];
+  periphrastic: { key: string; rule: string }[];
+}): boolean {
+  const usesEtre = table.periphrastic.some(
+    (p) => !p.key.startsWith('nonfinite') && auxiliariesInRule(p.rule).some((u) => u.auxiliary === 'être'),
+  );
+  const agreed = table.inflections.some((i) => i.tags[0] === 'pp' && i.tags.length === 3);
+  return usesEtre && !agreed;
 }

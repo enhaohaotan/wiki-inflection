@@ -5,13 +5,13 @@ import type { InflectionTable } from '../../core/types';
 import { french } from '../../languages/fr';
 import { conjugationLayout } from '../../languages/fr/verb/layout';
 import { expandForm } from '../../languages/fr/verb/notation';
+import { lacksAgreement } from '../../languages/fr/verb/participle';
 import { findLanguageSection, parsePage } from '../../wiktionary/page';
 import { isCorrect as isCorrectIn } from '../answers';
 import { randomVerb } from '../random';
 import { fromStored, storeTable } from '../saved';
 import { buildSheet as sheetOf } from '../sheet';
 import type { Blank, Sheet } from '../types';
-import { lacksAgreement } from '.';
 import { PRACTICE_VERBS } from './verbs';
 
 const buildSheet = (table: InflectionTable) => sheetOf(conjugationLayout(table));

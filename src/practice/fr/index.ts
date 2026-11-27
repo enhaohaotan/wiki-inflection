@@ -1,24 +1,20 @@
-import { auxiliariesInRule } from '../../languages/fr/verb/auxiliaries';
 import { conjugationLayout } from '../../languages/fr/verb/layout';
+import { lacksAgreement } from '../../languages/fr/verb/participle';
+import { plainVerb } from '../../languages/fr/verb/reflexive';
+import { hasForms } from '../conjugation';
 import { savedTables, type StoredTable } from '../saved';
 import type { PracticeLanguage } from '../types';
 import { kindOf } from './kinds';
 import { practiceLookup } from './lookup';
-import { plainVerb } from '../../languages/fr/verb/reflexive';
 import { KEY_VERBS, PRACTICE_VERBS } from './verbs';
 
 /**
- * Whether a table lacks the agreed participle forms (allée, allés, allées)
- * its compound tenses with être need. They come from a second page, so a
- * lookup interrupted by Wiktionary's rate limit can return the table without
- * them; it is then fetched again rather than saved incomplete.
+ * Whether a table has what the sheet needs: the present (only "il faut" for
+ * falloir), the past participle, and its agreed forms (allée, allés, allées)
+ * when the verb takes être.
  */
-export function lacksAgreement(table: Pick<StoredTable, 'inflections' | 'periphrastic'>): boolean {
-  const usesEtre = table.periphrastic.some(
-    (p) => !p.key.startsWith('nonfinite') && auxiliariesInRule(p.rule).some((u) => u.auxiliary === 'être'),
-  );
-  const agreed = table.inflections.some((i) => i.tags[0] === 'pp' && i.tags.length === 3);
-  return usesEtre && !agreed;
+function isComplete(table: StoredTable): boolean {
+  return hasForms(table, '3|s|pres|indc', 'pp') && !lacksAgreement(table);
 }
 
 export const frenchPractice: PracticeLanguage = {
@@ -38,6 +34,6 @@ export const frenchPractice: PracticeLanguage = {
   // The page the table was read from: s'asseoir's is on asseoir's; se lever is built from lever's.
   sourcePage: (table) => table.meta.page ?? plainVerb(table.lemma),
   kindOf,
-  isComplete: (table) => !lacksAgreement(table),
+  isComplete,
   spellingHint: 'Check the spelling, including accents (é, è, ê, ç).',
 };
