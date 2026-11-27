@@ -18,7 +18,7 @@ export const germanPractice: PracticeLanguage = {
   name: 'German',
   ownName: 'Deutsch',
   placeholder: 'Verb',
-  flag: ['#000000', '#dd0000', '#ffce00'],
+  flag: german.flag,
   locale: 'de',
   ready: true,
   verbs: PRACTICE_VERBS,

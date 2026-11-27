@@ -84,6 +84,8 @@ export interface VerbLanguage {
   name: string;
   /** Shown when a word is not found. */
   spellingHint: string;
+  /** The flag's colours in equal parts, left to right, for the strip along the top. */
+  flag: readonly string[];
   /** Its verb tables on a page. */
   parseTables(section: Element, pageTitle: string): InflectionTable[];
   /**
@@ -101,14 +103,15 @@ export interface VerbLanguage {
  * s'asseoir; hablar, hablarse): the one asked for comes first. Reverse
  * lookup follows a form's "inflection of" links (parlo -> parlare).
  */
-export function verbModule(language: VerbLanguage): LanguageModule {
-  const { code, name, spellingHint, parseTables, formHeadings = /^Verb\b/, enrich } = language;
+export function verbModule(language: VerbLanguage): LanguageModule & { flag: readonly string[] } {
+  const { code, name, spellingHint, flag, parseTables, formHeadings = /^Verb\b/, enrich } = language;
   return {
     code,
     name,
     locale: code,
     heading: name,
     spellingHint,
+    flag,
     parse(section, pageTitle) {
       const tables = parseTables(section, pageTitle);
       const asked = tables.filter((t) => t.lemma === pageTitle);

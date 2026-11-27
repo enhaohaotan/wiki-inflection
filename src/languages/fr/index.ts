@@ -7,6 +7,7 @@ export const french = verbModule({
   code: 'fr',
   name: 'French',
   spellingHint: 'Check the spelling, including accents (é, è, ê, ç).',
+  flag: ['#000091', '#ffffff', '#e1000f'],
   parseTables: parseFrenchVerbTables,
   // Verb forms (vais -> aller) and participle forms (allée -> allé).
   formHeadings: /^(Verb|Participle)\b/,

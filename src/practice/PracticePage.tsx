@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { LanguagePicker } from '../features/lookup/LanguagePicker';
 import { SearchBar } from '../features/lookup/SearchBar';
+import { FlagStrip } from '../ui/FlagStrip';
 import { Headword } from '../ui/Headword';
 import { JumpNav } from '../ui/JumpNav';
 import { pageUrl } from '../wiktionary/client';
@@ -100,7 +101,7 @@ export function PracticePage() {
   return (
     <>
       <header className="topbar">
-        <div className="flag" aria-hidden="true" style={{ background: stripes(language.flag) }} />
+        <FlagStrip colors={language.flag} />
         <div className="topbar-inner">
           {/* On the home page, where Home would lead nowhere, the language picker takes its place. */}
           {!word && PRACTICE_LANGUAGES.length > 1 ? (
@@ -173,13 +174,6 @@ export function PracticePage() {
 }
 
 /** The home page: every verb on the language's practice list, each opening its exercises. */
-/** Hard-edged bands of equal width, left to right. */
-function stripes(colors: readonly string[]): string {
-  const width = 100 / colors.length;
-  const bands = colors.map((c, i) => `${c} ${i * width}% ${(i + 1) * width}%`);
-  return `linear-gradient(to right, ${bands.join(', ')})`;
-}
-
 function Home({ language }: { language: PracticeLanguage }) {
   const { keyVerbs, verbs } = language;
   const Item = language.ready ? 'a' : 'span';

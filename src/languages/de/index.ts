@@ -6,5 +6,6 @@ export const german = verbModule({
   code: 'de',
   name: 'German',
   spellingHint: 'Check the spelling, including umlauts (ä, ö, ü) and ß.',
+  flag: ['#000000', '#dd0000', '#ffce00'],
   parseTables: parseGermanVerbTables,
 });

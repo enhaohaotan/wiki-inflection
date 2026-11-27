@@ -73,6 +73,15 @@ a {
   padding-top: env(safe-area-inset-top);
 }
 
+/* the language's flag colours, a thin strip along the top */
+.topbar .flag {
+  position: absolute;
+  top: env(safe-area-inset-top);
+  right: 0;
+  left: 0;
+  height: 4px;
+}
+
 .topbar-inner {
   display: flex;
   gap: 12px;

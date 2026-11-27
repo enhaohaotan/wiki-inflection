@@ -6,6 +6,7 @@ import { useLookup, type LookupState } from './features/lookup/useLookup';
 import { defaultLanguage, getLanguage, languages, type LanguageModule } from './languages/registry';
 import { homeViews } from './languages/homes';
 import { entryViews } from './languages/views';
+import { FlagStrip } from './ui/FlagStrip';
 import { pageUrl } from './wiktionary/client';
 
 export function App() {
@@ -37,6 +38,7 @@ export function App() {
   return (
     <>
       <header className="topbar">
+        {language.flag && <FlagStrip colors={language.flag} />}
         <div className="topbar-inner">
           <SearchBar
             value={Page ? '' : route.word}

@@ -18,7 +18,7 @@ export const italianPractice: PracticeLanguage = {
   name: 'Italian',
   ownName: 'Italiano',
   placeholder: 'verbo',
-  flag: ['#009246', '#ffffff', '#ce2b37'],
+  flag: italian.flag,
   locale: 'it',
   ready: true,
   verbs: PRACTICE_VERBS,

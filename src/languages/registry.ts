@@ -29,6 +29,11 @@ export interface LanguageModule {
   heading: string;
   /** Shown when a word is not found, e.g. "Check the spelling, including accents (é, è, ê, ç)." */
   spellingHint: string;
+  /**
+   * The flag's colours in equal parts, left to right, for the strip along
+   * the top, e.g. ['#000091', '#ffffff', '#e1000f']. None: no strip.
+   */
+  flag?: readonly string[];
   /** Extracts everything we support from that language's section of a page. */
   parse(section: Element, pageTitle: string): LanguageEntry;
   /**

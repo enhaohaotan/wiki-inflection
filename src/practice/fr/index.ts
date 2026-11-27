@@ -23,7 +23,7 @@ export const frenchPractice: PracticeLanguage = {
   name: 'French',
   ownName: 'Français',
   placeholder: 'verbe',
-  flag: ['#000091', '#ffffff', '#e1000f'],
+  flag: french.flag,
   locale: 'fr',
   ready: true,
   verbs: PRACTICE_VERBS,

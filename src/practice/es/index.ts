@@ -19,7 +19,7 @@ export const spanishPractice: PracticeLanguage = {
   ownName: 'Español',
   placeholder: 'verbo',
   // The middle band is twice as wide: red, yellow, yellow, red.
-  flag: ['#aa151b', '#f1bf00', '#f1bf00', '#aa151b'],
+  flag: spanish.flag,
   locale: 'es',
   ready: true,
   verbs: PRACTICE_VERBS,
