@@ -1,5 +1,6 @@
 import type { InflectionTable } from '../core/types';
 import { lookup, type LookupResult } from '../features/lookup/lookup';
+import { formMatcher, mainTable } from '../languages/conjugation';
 import type { LanguageModule } from '../languages/registry';
 import type { PracticeResult } from './types';
 
@@ -27,14 +28,8 @@ export interface ReflexiveVerbs {
    * always built.
    */
   ownTables: boolean;
-}
-
-const normalize = (form: string) => form.normalize('NFC').replace(/[’ʼ]/g, "'").toLowerCase();
-
-/** Whether a table has `form` among its forms. */
-function hasForm(table: InflectionTable, form: string): boolean {
-  const wanted = normalize(form);
-  return table.inflections.some((i) => i.forms.some((f) => normalize(f) === wanted));
+  /** A form without the pronoun the table writes into it (mi chiamo -> chiamo), to match a looked-up form. */
+  withoutReflexive(form: string): string;
 }
 
 /**
@@ -50,9 +45,8 @@ function tableIn(result: LookupResult, verb: string, reflexive: ReflexiveVerbs):
   const { entry, match } = result;
   const own = entry.tables.find((t) => t.lemma === verb);
   if (own || reflexive.isReflexive(verb)) return own;
-  const plain = entry.tables.find((t) => t.lemma === entry.title) ?? entry.tables[0];
-  if (!match || (plain && hasForm(plain, match.form))) return plain;
-  return entry.tables.find((t) => hasForm(t, match.form)) ?? plain;
+  if (!match) return entry.tables.find((t) => t.lemma === entry.title) ?? entry.tables[0];
+  return mainTable(entry, match.form, formMatcher(reflexive.withoutReflexive));
 }
 
 /**

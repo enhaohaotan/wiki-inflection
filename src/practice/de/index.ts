@@ -1,3 +1,4 @@
+import { german } from '../../languages/de';
 import { conjugationLayout } from '../../languages/de/verb/layout';
 import { plainVerb } from '../../languages/de/verb/reflexive';
 import { hasForms } from '../conjugation';
@@ -30,5 +31,5 @@ export const germanPractice: PracticeLanguage = {
   sourcePage: (table) => table.meta.page ?? plainVerb(table.lemma),
   kindOf,
   isComplete,
-  spellingHint: 'Check the spelling, including umlauts (ä, ö, ü) and ß.',
+  spellingHint: german.spellingHint,
 };

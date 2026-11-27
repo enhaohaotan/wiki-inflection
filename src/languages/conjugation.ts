@@ -1,4 +1,4 @@
-import type { InflectionTable } from '../core/types';
+import type { InflectionTable, LanguageEntry } from '../core/types';
 import type { Person } from './verbTables';
 
 /**
@@ -23,6 +23,11 @@ export interface ConjugationRow {
   shown: string[];
   /** Every spelling that is right: "sono andato", "sono andata". */
   accepted: string[];
+  /**
+   * The subject as written before each shown form, where it can differ
+   * between them (j'ai passé / je suis passé); none for single forms.
+   */
+  subjects?: string[];
 }
 
 export interface ConjugationTense {
@@ -161,6 +166,7 @@ export function layOut<Verb extends { table: InflectionTable }, Build, Auxiliary
       label: labelOf(language, person, mood.kind, shown),
       shown,
       accepted,
+      subjects: shown.map((form) => language.subject(person, mood.kind, form)),
     });
 
     if (!isBuilt(tense)) {
@@ -208,4 +214,42 @@ export function layOut<Verb extends { table: InflectionTable }, Build, Auxiliary
   }
 
   return { lemma: table.lemma, pos: table.pos, moods };
+}
+
+/** For matching a looked-up form: case, the kind of apostrophe and spacing don't count. */
+export function normalizeForm(text: string): string {
+  return text.normalize('NFC').replace(/[\u2019\u02BC]/g, "'").trim().toLowerCase();
+}
+
+/** Whether a form in a table is the looked-up word. */
+export type FormMatcher = (form: string, query: string) => boolean;
+
+/**
+ * Matches a form as it is, or without a reflexive verb's pronoun, which the
+ * tables write into the form (m'assois, mi chiamo, freue mich): so a lookup
+ * of "assois" finds it.
+ */
+export function formMatcher(withoutReflexive?: (form: string) => string): FormMatcher {
+  return (form, query) => {
+    const f = normalizeForm(form);
+    const q = normalizeForm(query);
+    return f === q || (withoutReflexive !== undefined && withoutReflexive(f) === q);
+  };
+}
+
+/** For each table, whether it contains the looked-up form. */
+export function tablesWithMatch(tables: InflectionTable[], query: string | undefined, matches: FormMatcher): boolean[] {
+  return tables.map((table) => !!query && table.inflections.some((i) => i.forms.some((form) => matches(form, query))));
+}
+
+/**
+ * The one table that stands for an entry after a reverse lookup: the plain
+ * verb (être rather than s'être) when it has the form, else the first table
+ * that has it (suis: suivre), else the plain verb anyway.
+ */
+export function mainTable(entry: LanguageEntry, query: string, matches: FormMatcher): InflectionTable | undefined {
+  const plain = entry.tables.find((t) => t.lemma === entry.title) ?? entry.tables[0];
+  const hits = tablesWithMatch(entry.tables, query, matches);
+  const matching = entry.tables.filter((_, i) => hits[i]);
+  return plain && matching.includes(plain) ? plain : (matching[0] ?? plain);
 }

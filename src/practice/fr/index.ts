@@ -1,3 +1,4 @@
+import { french } from '../../languages/fr';
 import { conjugationLayout } from '../../languages/fr/verb/layout';
 import { lacksAgreement } from '../../languages/fr/verb/participle';
 import { plainVerb } from '../../languages/fr/verb/reflexive';
@@ -35,5 +36,5 @@ export const frenchPractice: PracticeLanguage = {
   sourcePage: (table) => table.meta.page ?? plainVerb(table.lemma),
   kindOf,
   isComplete,
-  spellingHint: 'Check the spelling, including accents (é, è, ê, ç).',
+  spellingHint: french.spellingHint,
 };

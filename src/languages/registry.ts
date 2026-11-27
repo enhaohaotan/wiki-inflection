@@ -9,7 +9,10 @@ export type SectionFetcher = (title: string) => Promise<Element | null>;
 /** Fetches a whole page (e.g. an appendix, which has no language section), or null. */
 export type DocumentFetcher = (title: string) => Promise<Document | null>;
 import { danish } from './da';
+import { german } from './de';
+import { spanish } from './es';
 import { french } from './fr';
+import { italian } from './it';
 
 /**
  * What a language has to provide to be searchable. Parsing is kept free of
@@ -24,6 +27,8 @@ export interface LanguageModule {
   locale: string;
   /** The language's level-2 heading on en.wiktionary.org, e.g. "French". */
   heading: string;
+  /** Shown when a word is not found, e.g. "Check the spelling, including accents (é, è, ê, ç)." */
+  spellingHint: string;
   /** Extracts everything we support from that language's section of a page. */
   parse(section: Element, pageTitle: string): LanguageEntry;
   /**
@@ -42,7 +47,8 @@ export interface LanguageModule {
   lemmasOf?(section: Element, pageTitle: string): string[];
 }
 
-export const languages: readonly LanguageModule[] = [french, danish];
+/** In the order of the language picker. */
+export const languages: readonly LanguageModule[] = [french, german, spanish, italian, danish];
 
 export const defaultLanguage: LanguageModule = french;
 

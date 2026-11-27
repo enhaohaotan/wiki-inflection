@@ -7,8 +7,16 @@ import { DanishNumeralView } from './da/numeral/NumeralView';
 import { DanishPronounView } from './da/pronoun/PronounView';
 import { DanishVerbView } from './da/verb/VerbView';
 import { danishMainTables, danishTablesWithMatch } from './da/verb/layout';
-import { ConjugationView } from './fr/verb/ConjugationView';
-import { mainTable, tablesWithMatch } from './fr/verb/viewLayout';
+import { ConjugationView } from '../ui/ConjugationView';
+import { formMatcher, mainTable, tablesWithMatch, type ConjugationLayout } from './conjugation';
+import { conjugationLayout as germanLayout } from './de/verb/layout';
+import { withoutReflexive as germanWithoutReflexive } from './de/verb/reflexive';
+import { conjugationLayout as spanishLayout } from './es/verb/layout';
+import { withoutReflexive as spanishWithoutReflexive } from './es/verb/reflexive';
+import { conjugationLayout as frenchLayout } from './fr/verb/layout';
+import { withoutReflexive as frenchWithoutReflexive } from './fr/verb/reflexive';
+import { conjugationLayout as italianLayout } from './it/verb/layout';
+import { withoutReflexive as italianWithoutReflexive } from './it/verb/reflexive';
 
 export interface EntryViewProps {
   /**
@@ -143,16 +151,29 @@ function EntryView({ entries, initial, highlight, kit }: EntryViewProps & { kit:
   );
 }
 
-const french: TableKit = {
-  lang: 'fr',
-  Table: ({ table, highlight }) => <ConjugationView table={table} idPrefix="t0-" highlight={highlight} />,
-  withMatch: tablesWithMatch,
-  // Pronominal variants (s'être) are left to a lookup of the verb itself.
-  main: (entry, query) => {
-    const table = mainTable(entry, query);
-    return table ? [table] : [];
-  },
-};
+/**
+ * The kit of a language whose tables are verb conjugations, shown in the
+ * shared layout by the shared view. Reflexive variants (s'être) are left to
+ * a lookup of the verb itself.
+ */
+function conjugationKit(
+  lang: string,
+  layout: (table: InflectionTable) => ConjugationLayout,
+  withoutReflexive: (form: string) => string,
+): TableKit {
+  const matches = formMatcher(withoutReflexive);
+  return {
+    lang,
+    Table: ({ table, highlight }) => (
+      <ConjugationView layout={layout(table)} lang={lang} idPrefix="t0-" highlight={highlight} matches={matches} />
+    ),
+    withMatch: (tables, query) => tablesWithMatch(tables, query, matches),
+    main: (entry, query) => {
+      const table = mainTable(entry, query, matches);
+      return table ? [table] : [];
+    },
+  };
+}
 
 /** Danish pages can hold verbs, nouns, adjectives, adverbs and pronouns; each is drawn by its own view. */
 function DanishTable({ table, highlight }: { table: InflectionTable; highlight?: string }) {
@@ -180,6 +201,9 @@ const withKit = (kit: TableKit) =>
 
 /** The component that renders an entry, per language code. */
 export const entryViews: Record<string, ComponentType<EntryViewProps>> = {
-  fr: withKit(french),
+  fr: withKit(conjugationKit('fr', frenchLayout, frenchWithoutReflexive)),
+  de: withKit(conjugationKit('de', germanLayout, germanWithoutReflexive)),
+  es: withKit(conjugationKit('es', spanishLayout, spanishWithoutReflexive)),
+  it: withKit(conjugationKit('it', italianLayout, italianWithoutReflexive)),
   da: withKit(danish),
 };

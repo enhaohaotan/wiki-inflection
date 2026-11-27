@@ -81,3 +81,16 @@ export function reflexiveTable(plain: InflectionTable, verb: string): Inflection
     meta: { ...plain.meta, auxiliary: "s'être" },
   };
 }
+
+/**
+ * A form without the reflexive pronoun a pronominal table writes into it,
+ * to match a lookup of the bare form: "m'assois", "nous assoyons",
+ * "assois-toi" -> "assois", "assoyons", "assois"; with "en" too: "m'en
+ * suis", "nous en sommes", "va-t'en" -> "suis", "sommes", "va". Expects a
+ * normalized form (straight apostrophes, lowercase).
+ */
+export function withoutReflexive(form: string): string {
+  return form
+    .replace(/^(?:[mts]'en |(?:nous|vous) en |[mts]'|(?:me|te|se|nous|vous) )/, '')
+    .replace(/-(?:t'en|(?:nous|vous)-en|toi|nous|vous)$/, '');
+}

@@ -1,4 +1,5 @@
-import type { Inflection } from '../../../core/types';
+import type { Inflection, InflectionTable, LanguageEntry } from '../../../core/types';
+import type { SectionFetcher } from '../../registry';
 import { cleanText, headingPath } from '../../../wiktionary/page';
 import { auxiliariesInRule } from './auxiliaries';
 import { tagsOf } from './parse';
@@ -58,4 +59,37 @@ export function lacksAgreement(table: {
   );
   const agreed = table.inflections.some((i) => i.tags[0] === 'pp' && i.tags.length === 3);
   return usesEtre && !agreed;
+}
+
+function pastParticiple(table: InflectionTable): string | undefined {
+  return table.inflections.find((i) => i.tags.length === 1 && i.tags[0] === 'pp')?.forms[0];
+}
+
+/** Whether any compound tense uses être, where the participle agrees with the subject. */
+function usesEtre(table: InflectionTable): boolean {
+  return table.periphrastic.some((p) => auxiliariesInRule(p.rule).some((u) => u.auxiliary === 'être'));
+}
+
+/**
+ * Adds the agreed forms of the past participle (allée, allés, allées) to the
+ * tables whose compound tenses take être: the conjugation table only has the
+ * masculine singular; the others are on the participle's own page.
+ */
+export async function enrichParticiples(entry: LanguageEntry, fetchSection: SectionFetcher): Promise<LanguageEntry> {
+  const wanted = new Set(entry.tables.filter(usesEtre).map(pastParticiple).filter((p) => p !== undefined));
+  if (wanted.size === 0) return entry;
+
+  const forms = new Map<string, Inflection[]>();
+  for (const participle of wanted) {
+    const section = await fetchSection(participle);
+    forms.set(participle, section ? parseParticipleForms(section) : []);
+  }
+
+  return {
+    ...entry,
+    tables: entry.tables.map((table) => {
+      const extra = usesEtre(table) ? forms.get(pastParticiple(table) ?? '') : undefined;
+      return extra?.length ? { ...table, inflections: [...table.inflections, ...extra] } : table;
+    }),
+  };
 }

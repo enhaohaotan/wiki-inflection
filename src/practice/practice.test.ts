@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest';
+import { getLanguage } from '../languages/registry';
+import { fixtureEntry } from '../languages/testing';
 import { normalizeAnswer } from './answers';
 import { defaultPracticeLanguage, getPracticeLanguage, PRACTICE_LANGUAGES } from './languages';
 import { randomVerb } from './random';
-import { storeTable } from './saved';
+import { fromStored, storeTable } from './saved';
 import { homeHref, parseHash, verbHref } from './route';
+
+/** A verb with a saved test page in each language, whose table can be saved and restored. */
+const SAMPLE_VERBS: Record<string, string> = { fr: 'aller', de: 'machen', es: 'hablar', it: 'parlare' };
 
 const fr = getPracticeLanguage('fr')!;
 
@@ -39,9 +44,18 @@ describe('every practice language', () => {
 
   for (const language of PRACTICE_LANGUAGES) {
     describe(language.name, () => {
-      it('lists each verb once, the key verbs among them', () => {
+      it('lists 200 verbs once each, 20 key verbs among them', () => {
+        expect(language.verbs).toHaveLength(200);
         expect(new Set(language.verbs).size).toBe(language.verbs.length);
+        expect(language.keyVerbs).toHaveLength(20);
         expect(language.keyVerbs.filter((v) => !language.verbs.includes(v))).toEqual([]);
+      });
+
+      it.skipIf(!language.ready)('lays out a saved table as the table it was saved from', async () => {
+        const entry = await fixtureEntry(getLanguage(language.code)!, SAMPLE_VERBS[language.code]!);
+        const table = entry.tables[0]!;
+        const restored = fromStored(JSON.parse(JSON.stringify(storeTable(table))), language.code);
+        expect(language.layout(restored)).toEqual(language.layout(table));
       });
 
       it.skipIf(!language.ready)('has a saved, complete table for every verb on its list', async () => {

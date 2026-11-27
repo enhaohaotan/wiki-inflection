@@ -4,14 +4,11 @@ import { describe, expect, it } from 'vitest';
 import type { InflectionTable } from '../../../core/types';
 import { findLanguageSection, listLanguages, parsePage } from '../../../wiktionary/page';
 import { french } from '..';
-import { layoutConjugation, pronounFor, type MoodBlock } from './viewLayout';
-
-const tensesOf = (mood: MoodBlock) => mood.pairs.flatMap((p) => (p.compound ? [p.simple, p.compound] : [p.simple]));
 import { parseFrenchVerbTables } from './parse';
 
 // Real pages saved from the Core REST API (/w/rest.php/v1/page/{title}/html).
 function fixture(word: string): string {
-  return readFileSync(resolve(process.cwd(), 'test/fixtures', `${word}.html`), 'utf8');
+  return readFileSync(resolve(process.cwd(), 'test/fixtures/fr', `${word}.html`), 'utf8');
 }
 
 function load(word: string): InflectionTable[] {
@@ -108,8 +105,6 @@ describe('parseFrenchVerbTables', () => {
     expect(forms(t, 'ppr')).toEqual(["s'assoyant", "s'asseyant"]);
     expect(forms(t, 'pp')).toEqual(['assis']);
     expect(t.inflections).toHaveLength(3 + 7 * 6 + 3);
-    const c = layoutConjugation(t);
-    expect(tensesOf(c.moods[0]!)[0]!.rows[0]).toMatchObject({ pronoun: 'je', forms: ["m'assois", "m'assieds"] });
   });
 
   it('puts the conjugation that was asked for first', () => {
@@ -126,65 +121,5 @@ describe('parseFrenchVerbTables', () => {
 
   it('returns nothing for a French word that is not a verb (chat)', () => {
     expect(load('chat')).toEqual([]);
-  });
-});
-
-describe('layoutConjugation', () => {
-  it('groups aller into moods and tenses with pronouns', () => {
-    const c = layoutConjugation(load('aller')[0]!);
-    expect(c.participles).toEqual([
-      { fr: 'Présent', forms: ['allant'], agreed: [] },
-      { fr: 'Passé', forms: ['allé'], agreed: [] },
-    ]);
-    expect(c.moods.map((m) => m.fr)).toEqual(['Indicatif', 'Conditionnel', 'Subjonctif', 'Impératif']);
-
-    const present = tensesOf(c.moods[0]!)[0]!;
-    expect(present.rows.map((r) => `${r.pronoun} ${r.forms[0]}`)).toEqual([
-      'je vais',
-      'tu vas',
-      'il/elle/on va',
-      'nous allons',
-      'vous allez',
-      'ils/elles vont',
-    ]);
-    const subjunctive = tensesOf(c.moods[2]!)[0]!;
-    expect(subjunctive.rows.map((r) => r.pronoun)).toEqual([
-      'que j’',
-      'que tu',
-      'qu’il/elle/on',
-      'que nous',
-      'que vous',
-      'qu’ils/elles',
-    ]);
-    expect(tensesOf(c.moods[3]!)[0]!.rows.map((r) => `${r.pronoun} ${r.forms[0]}`)).toEqual([
-      '(tu) va',
-      '(nous) allons',
-      '(vous) allez',
-    ]);
-    expect(c.moods[0]!.pairs.map((p) => `${p.simple.fr} | ${p.compound?.fr}`)).toEqual([
-      'Présent | Passé composé',
-      'Imparfait | Plus-que-parfait',
-      'Passé simple | Passé antérieur',
-      'Futur simple | Futur antérieur',
-    ]);
-    expect(c.moods[1]!.pairs.map((p) => `${p.simple.fr} | ${p.compound?.fr}`)).toEqual(['Présent | Passé']);
-    expect(c.moods[2]!.pairs.map((p) => `${p.simple.fr} | ${p.compound?.fr}`)).toEqual([
-      'Présent | Passé',
-      'Imparfait | Plus-que-parfait',
-    ]);
-  });
-
-  it('shows gaps for missing persons and drops empty moods (pleuvoir)', () => {
-    const c = layoutConjugation(load('pleuvoir')[0]!);
-    expect(c.moods.map((m) => m.id)).toEqual(['indicatif', 'conditionnel', 'subjonctif']);
-    const present = tensesOf(c.moods[0]!)[0]!;
-    expect(present.rows.map((r) => r.forms.length)).toEqual([0, 0, 1, 0, 0, 1]);
-  });
-
-  it('elides je before a vowel', () => {
-    expect(pronounFor('1', 's', 'plain', 'irai')).toBe('j’');
-    expect(pronounFor('1', 's', 'plain', 'vais')).toBe('je');
-    expect(pronounFor('1', 's', 'plain', 'habite')).toBe('je (j’)');
-    expect(pronounFor('1', 's', 'subjunctive', 'aille')).toBe('que j’');
   });
 });

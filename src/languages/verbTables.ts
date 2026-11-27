@@ -77,26 +77,47 @@ export function verbTable(
   };
 }
 
+/** What a verb language gives the shared module. */
+export interface VerbLanguage {
+  code: string;
+  /** In English, also its heading on Wiktionary: "French". */
+  name: string;
+  /** Shown when a word is not found. */
+  spellingHint: string;
+  /** Its verb tables on a page. */
+  parseTables(section: Element, pageTitle: string): InflectionTable[];
+  /**
+   * The headings whose "inflection of" links lead from a form to its verb:
+   * Verb by default; French follows Participle ones too (allée -> allé).
+   */
+  formHeadings?: RegExp;
+  /** A second step adding data from other pages (French: the agreed participle forms). */
+  enrich?: LanguageModule['enrich'];
+}
+
 /**
- * A language module for verbs only, for the practice page: the lookup site
- * has no view for it (it is not in the registry's list of languages).
- * Reverse lookup follows a form's "inflection of" links (parlo -> parlare).
+ * A language module for verbs, whose tables are shown by the shared
+ * conjugation view. A page can hold several conjugations (asseoir,
+ * s'asseoir; hablar, hablarse): the one asked for comes first. Reverse
+ * lookup follows a form's "inflection of" links (parlo -> parlare).
  */
-export function verbModule(
-  code: string,
-  name: string,
-  parseTables: (section: Element, pageTitle: string) => InflectionTable[],
-): LanguageModule {
+export function verbModule(language: VerbLanguage): LanguageModule {
+  const { code, name, spellingHint, parseTables, formHeadings = /^Verb\b/, enrich } = language;
   return {
     code,
     name,
     locale: code,
     heading: name,
+    spellingHint,
     parse(section, pageTitle) {
-      return { lang: code, title: pageTitle, tables: parseTables(section, pageTitle) };
+      const tables = parseTables(section, pageTitle);
+      const asked = tables.filter((t) => t.lemma === pageTitle);
+      const others = tables.filter((t) => t.lemma !== pageTitle);
+      return { lang: code, title: pageTitle, tables: [...asked, ...others] };
     },
     lemmasOf(section) {
-      return formOfTargets(section, code, (heading) => /^Verb\b/.test(heading));
+      return formOfTargets(section, code, (heading) => formHeadings.test(heading));
     },
+    ...(enrich && { enrich }),
   };
 }

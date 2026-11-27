@@ -1,22 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import { conjugationLayout } from '../../languages/es/verb/layout';
-import { parseSpanishVerbTables } from '../../languages/es/verb/parse';
-import { fixtureLoader, sheetBuilder, tense } from '../testing';
+import { fixtureLoader, tenseIn } from '../../testing';
+import { spanish } from '..';
+import { conjugationLayout } from './layout';
 
-const load = fixtureLoader('es', 'Spanish', parseSpanishVerbTables);
-const buildSheet = sheetBuilder(conjugationLayout);
+const load = fixtureLoader(spanish);
 
-describe('buildSheet', () => {
+describe('conjugationLayout', () => {
   it('lays out the moods and tenses, the compound tenses and the future subjunctive folded', () => {
-    const sheet = buildSheet(load('hablar'));
-    expect(sheet.sections.map((s) => s.name)).toEqual([
+    const layout = conjugationLayout(load('hablar'));
+    expect(layout.moods.map((s) => s.name)).toEqual([
       'Indicativo',
       'Condicional',
       'Subjuntivo',
       'Imperativo',
       'Formas no personales',
     ]);
-    const subjuntivo = sheet.sections[2]!.pairs.flat();
+    const subjuntivo = layout.moods[2]!.pairs.flat();
     expect(subjuntivo.map((e) => [e.name, e.folded])).toEqual([
       ['Presente', false],
       ['Pretérito perfecto', true],
@@ -28,8 +27,8 @@ describe('buildSheet', () => {
   });
 
   it('builds the compound tenses with haber', () => {
-    const sheet = buildSheet(load('hablar'));
-    expect(tense(sheet, 'indicativo', 'Pretérito perfecto').map((b) => [b.label, b.forms])).toEqual([
+    const layout = conjugationLayout(load('hablar'));
+    expect(tenseIn(layout, 'indicativo', 'Pretérito perfecto').map((b) => [b.label, b.shown])).toEqual([
       ['yo', ['he hablado']],
       ['tú', ['has hablado']],
       ['él/ella', ['ha hablado']],
@@ -40,17 +39,17 @@ describe('buildSheet', () => {
   });
 
   it('takes both forms of the imperfect subjunctive', () => {
-    const sheet = buildSheet(load('hablar'));
-    const simple = tense(sheet, 'subjuntivo', 'Pretérito imperfecto');
+    const layout = conjugationLayout(load('hablar'));
+    const simple = tenseIn(layout, 'subjuntivo', 'Pretérito imperfecto');
     expect(simple[0]!.label).toBe('que yo');
-    expect(simple[0]!.forms).toEqual(['hablara', 'hablase']);
-    const compound = tense(sheet, 'subjuntivo', 'Pretérito pluscuamperfecto');
-    expect(compound[3]!.forms).toEqual(['hubiéramos hablado', 'hubiésemos hablado']);
+    expect(simple[0]!.shown).toEqual(['hablara', 'hablase']);
+    const compound = tenseIn(layout, 'subjuntivo', 'Pretérito pluscuamperfecto');
+    expect(compound[3]!.shown).toEqual(['hubiéramos hablado', 'hubiésemos hablado']);
   });
 
   it('asks for the imperative of tú, usted, nosotros, vosotros, ustedes', () => {
-    const blanks = tense(buildSheet(load('hablar')), 'imperativo', 'Afirmativo');
-    expect(blanks.map((b) => [b.label, b.forms])).toEqual([
+    const blanks = tenseIn(conjugationLayout(load('hablar')), 'imperativo', 'Afirmativo');
+    expect(blanks.map((b) => [b.label, b.shown])).toEqual([
       ['(tú)', ['habla']],
       ['(usted)', ['hable']],
       ['(nosotros)', ['hablemos']],
@@ -60,9 +59,9 @@ describe('buildSheet', () => {
   });
 
   it('puts the reflexive pronoun before haber (llamarse)', () => {
-    const sheet = buildSheet(load('llamarse'));
-    expect(tense(sheet, 'indicativo', 'Presente')[0]!.forms).toEqual(['me llamo']);
-    expect(tense(sheet, 'indicativo', 'Pretérito perfecto').map((b) => b.forms[0])).toEqual([
+    const layout = conjugationLayout(load('llamarse'));
+    expect(tenseIn(layout, 'indicativo', 'Presente')[0]!.shown).toEqual(['me llamo']);
+    expect(tenseIn(layout, 'indicativo', 'Pretérito perfecto').map((b) => b.shown[0])).toEqual([
       'me he llamado',
       'te has llamado',
       'se ha llamado',
@@ -70,8 +69,8 @@ describe('buildSheet', () => {
       'os habéis llamado',
       'se han llamado',
     ]);
-    const forms = sheet.sections.at(-1)!.pairs[0]![0]!.blanks;
-    expect(forms.map((b) => [b.label, b.forms])).toEqual([
+    const forms = layout.moods.at(-1)!.pairs[0]![0]!.rows;
+    expect(forms.map((b) => [b.label, b.shown])).toEqual([
       ['gerundio', ['llamándose']],
       ['participio', ['llamado']],
     ]);

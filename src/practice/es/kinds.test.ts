@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { parseSpanishVerbTables } from '../../languages/es/verb/parse';
-import { fixtureLoader } from '../testing';
+import { spanish } from '../../languages/es';
+import { fixtureLoader } from '../../languages/testing';
 import { kindOf } from './kinds';
 
-const load = fixtureLoader('es', 'Spanish', parseSpanishVerbTables);
+const load = fixtureLoader(spanish);
 
 describe('kindOf', () => {
   it('goes by the class Wiktionary gives the table', () => {

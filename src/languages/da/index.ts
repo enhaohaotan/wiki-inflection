@@ -19,6 +19,7 @@ export const danish: LanguageModule = {
   name: 'Danish',
   locale: 'da',
   heading: 'Danish',
+  spellingHint: 'Check the spelling, including æ, ø and å.',
   parse(section, pageTitle) {
     // Conjugations, declensions, adjectives and adverbs in page order (spise is a noun, then a verb).
     const tables: InflectionTable[] = [];

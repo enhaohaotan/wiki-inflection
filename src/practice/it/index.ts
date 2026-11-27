@@ -1,3 +1,4 @@
+import { italian } from '../../languages/it';
 import { conjugationLayout } from '../../languages/it/verb/layout';
 import { plainVerb } from '../../languages/it/verb/reflexive';
 import { hasForms } from '../conjugation';
@@ -30,5 +31,5 @@ export const italianPractice: PracticeLanguage = {
   sourcePage: (table) => table.meta.page ?? plainVerb(table.lemma),
   kindOf,
   isComplete,
-  spellingHint: 'Check the spelling, including the accent on a final vowel (parlò, sarà, è).',
+  spellingHint: italian.spellingHint,
 };

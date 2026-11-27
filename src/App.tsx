@@ -119,7 +119,7 @@ function Problem({
       return (
         <div className="status problem" role="alert">
           <h2>No entry for “{state.query}”</h2>
-          <p>Check the spelling, including accents (é, è, ê, ç).</p>
+          <p>{language.spellingHint}</p>
         </div>
       );
     case 'no-language':

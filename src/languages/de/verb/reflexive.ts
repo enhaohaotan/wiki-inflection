@@ -44,3 +44,8 @@ export function reflexiveTable(plain: InflectionTable, verb: string): Inflection
   }
   return { ...plain, lemma: verb, title: `Conjugation of ${verb}`, inflections };
 }
+
+/** A form without the pronoun after the verb, to match a lookup of the bare form: "freue mich" -> "freue". */
+export function withoutReflexive(form: string): string {
+  return form.replace(/ (?:mich|dich|sich|uns|euch)\b/, '');
+}

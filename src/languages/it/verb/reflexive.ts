@@ -54,3 +54,8 @@ export function reflexiveTable(plain: InflectionTable, verb: string): Inflection
   }
   return { ...plain, lemma: verb, title: `Conjugation of ${verb}`, inflections };
 }
+
+/** A form without the pronoun before it, to match a lookup of the bare form: "mi chiamo" -> "chiamo". */
+export function withoutReflexive(form: string): string {
+  return form.replace(/^(?:mi|ti|si|ci|vi) /, '');
+}

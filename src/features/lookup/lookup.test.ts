@@ -2,11 +2,18 @@ import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { french } from '../../languages/fr';
-import { mainTable, matchesForm, tablesWithMatch } from '../../languages/fr/verb/viewLayout';
+import { formMatcher, mainTable as mainTableBy, tablesWithMatch as tablesWithMatchBy } from '../../languages/conjugation';
+import { withoutReflexive } from '../../languages/fr/verb/reflexive';
 import { findLanguageSection, formOfTargets, parsePage } from '../../wiktionary/page';
 import { lookup } from './lookup';
 
-const FIXTURES = resolve(process.cwd(), 'test/fixtures');
+// French forms, matched with or without a pronominal verb's pronoun.
+const matchesForm = formMatcher(withoutReflexive);
+const tablesWithMatch = (tables: Parameters<typeof tablesWithMatchBy>[0], query: string | undefined) =>
+  tablesWithMatchBy(tables, query, matchesForm);
+const mainTable = (entry: Parameters<typeof mainTableBy>[0], query: string) => mainTableBy(entry, query, matchesForm);
+
+const FIXTURES = resolve(process.cwd(), 'test/fixtures/fr');
 
 /** Fixture for a page title: lemma pages are "<title>.html", forms "form-<title>.html", participles "pp-<title>.html". */
 function fixtureFor(title: string): string | null {

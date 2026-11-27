@@ -1,5 +1,5 @@
 import { french } from '../../languages/fr';
-import { isReflexive, plainVerb, reflexiveTable } from '../../languages/fr/verb/reflexive';
+import { isReflexive, plainVerb, reflexiveTable, withoutReflexive } from '../../languages/fr/verb/reflexive';
 import { practiceLookup as lookupWith } from '../conjugation';
 import type { PracticeResult } from '../types';
 
@@ -9,5 +9,10 @@ import type { PracticeResult } from '../types';
  * that, it is built from the plain verb's (se coucher from coucher).
  */
 export function practiceLookup(verb: string, signal?: AbortSignal): Promise<PracticeResult> {
-  return lookupWith(french, { isReflexive, plainVerb, build: reflexiveTable, ownTables: true }, verb, signal);
+  return lookupWith(
+    french,
+    { isReflexive, plainVerb, build: reflexiveTable, withoutReflexive, ownTables: true },
+    verb,
+    signal,
+  );
 }
